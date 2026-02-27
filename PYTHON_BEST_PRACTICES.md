@@ -13,8 +13,8 @@ Ce document identifie les points qui pourraient être améliorés pour suivre le
 **Problème actuel :**
 ```python
 # Imports actuels
-from src.cutter import run_pipeline
-from src.models import CutterResult
+from derush.cutter import run_pipeline
+from derush.models import CutterResult
 ```
 
 **Bonne pratique Python :**
@@ -43,7 +43,7 @@ rush-cleaner-v3/
 ```
 
 **Pourquoi c'est important :**
-- ❌ `from src.xxx` n'est pas standard et confondant
+- ❌ `from derush.xxx` n'est pas standard et confondant
 - ✅ `from derush.xxx` est plus professionnel
 - ✅ Compatible avec les outils Python (pip install, etc.)
 - ✅ Meilleure expérience pour les contributeurs
@@ -279,7 +279,7 @@ pre-commit install
 ```python
 # tests/test_performance.py
 import pytest
-from src.cutter import run_pipeline
+from derush.cutter import run_pipeline
 
 def test_pipeline_performance(benchmark):
     result = benchmark(

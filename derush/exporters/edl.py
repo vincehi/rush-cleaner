@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from src.exporters.base import BaseExporter
-from src.models import CutterResult, MediaInfo, NTSC_FPS, NTSC_FPS_TOLERANCE
+from derush.exporters.base import BaseExporter
+from derush.models import CutterResult, MediaInfo, NTSC_FPS, NTSC_FPS_TOLERANCE
 
 
 class EDLExporter(BaseExporter):

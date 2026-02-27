@@ -1,16 +1,34 @@
-"""CLI entry point for the derush tool."""
+"""CLI entry point for derush tool."""
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 import typer
 
-from src import __version__
-from src.config import CutterConfig
-from src.cutter import run_pipeline
-from src.exporters import JSONExporter, get_fcpxml_exporter, get_edl_exporter
-from src.media_info import get_media_info
-from src.transcriber import transcribe
+from derush import __version__
+from derush.config import CutterConfig
+from derush.cutter import run_pipeline
+from derush.exceptions import DerushError, TranscriptionError, MediaInfoError
+from derush.exporters import JSONExporter, get_fcpxml_exporter, get_edl_exporter
+from derush.media_info import get_media_info
+from derush.transcriber import transcribe
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbose: bool = False) -> None:
+    """Configure logging for application.
+
+    Args:
+        verbose: If True, set level to DEBUG, otherwise INFO.
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def version_callback(value: bool) -> None:
@@ -107,10 +125,15 @@ def main(
     The output can be imported into video editing software like DaVinci Resolve,
     Final Cut Pro, or Premiere Pro.
     """
+    # Setup logging
+    setup_logging(verbose)
+
     # Validate format
     output_format = output_format.lower()
     if output_format not in ["fcpxml", "edl", "json"]:
-        typer.echo(f"Error: Invalid format '{output_format}'. Use: fcpxml, edl, or json")
+        error_msg = f"Invalid format '{output_format}'. Use: fcpxml, edl, or json"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
         raise typer.Exit(1)
 
     # Get media info
@@ -127,6 +150,8 @@ def main(
     typer.echo(f"  Duration: {media_info.duration:.1f}s")
     if media_info.has_video:
         typer.echo(f"  Resolution: {media_info.width}x{media_info.height}")
+
+    logger.debug(f"Media info extracted: {media_info}")
 
     # Transcribe
     typer.echo("\nTranscribing audio...")
@@ -150,8 +175,17 @@ def main(
             chunk_size=chunk_size,
             whisperx_output=whisperx_output,
         )
-    except RuntimeError as e:
-        typer.echo(f"Error during transcription: {e}")
+    except (RuntimeError, TranscriptionError) as e:
+        typer.echo(f"Transcription failed: {e}", err=True)
+        logger.error(f"Transcription failed: {e}")
+        raise typer.Exit(1)
+    except MediaInfoError as e:
+        typer.echo(f"Media info extraction failed: {e}", err=True)
+        logger.error(f"Media info extraction failed: {e}")
+        raise typer.Exit(1)
+    except DerushError as e:
+        typer.echo(f"Error: {e}", err=True)
+        logger.error(f"Error: {e}")
         raise typer.Exit(1)
 
     typer.echo(f"  Found {len(segments)} segments")

@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from src.models import MediaInfo
+from derush.models import MediaInfo
 
 
 def get_media_info(file_path: Path, fallback_fps: float = 25.0) -> MediaInfo:

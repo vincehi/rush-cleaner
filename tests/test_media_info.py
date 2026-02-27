@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from src.media_info import get_media_info, _parse_frame_rate
-from src.models import MediaInfo
+from derush.media_info import get_media_info, _parse_frame_rate
+from derush.models import MediaInfo
 
 
 class TestParseFrameRate:
@@ -37,7 +37,7 @@ class TestGetMediaInfo:
         with pytest.raises(FileNotFoundError):
             get_media_info(non_existent)
 
-    @patch("src.media_info.shutil.which")
+    @patch("derush.media_info.shutil.which")
     def test_ffprobe_not_available(self, mock_which, tmp_path):
         """Test fallback when ffprobe is not available."""
         mock_which.return_value = None
@@ -53,8 +53,8 @@ class TestGetMediaInfo:
         assert result.has_video is False
         assert result.file_path == str(test_file.absolute())
 
-    @patch("src.media_info.shutil.which")
-    @patch("src.media_info.subprocess.run")
+    @patch("derush.media_info.shutil.which")
+    @patch("derush.media_info.subprocess.run")
     def test_extract_video_info(self, mock_run, mock_which, tmp_path):
         """Test extracting video metadata via ffprobe."""
         mock_which.return_value = "/usr/bin/ffprobe"
@@ -95,8 +95,8 @@ class TestGetMediaInfo:
         assert result.height == 1080
         assert result.has_video is True
 
-    @patch("src.media_info.shutil.which")
-    @patch("src.media_info.subprocess.run")
+    @patch("derush.media_info.shutil.which")
+    @patch("derush.media_info.subprocess.run")
     def test_audio_only_file(self, mock_run, mock_which, tmp_path):
         """Test handling audio-only files (no video stream)."""
         mock_which.return_value = "/usr/bin/ffprobe"
@@ -127,8 +127,8 @@ class TestGetMediaInfo:
         assert result.width == 0
         assert result.height == 0
 
-    @patch("src.media_info.shutil.which")
-    @patch("src.media_info.subprocess.run")
+    @patch("derush.media_info.shutil.which")
+    @patch("derush.media_info.subprocess.run")
     def test_ffprobe_failure(self, mock_run, mock_which, tmp_path):
         """Test error handling when ffprobe fails."""
         mock_which.return_value = "/usr/bin/ffprobe"

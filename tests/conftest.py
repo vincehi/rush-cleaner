@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.models import Cut, CutterResult, CutType, CutReason, KeepSegment, MediaInfo, Word, WordStatus
+from derush.models import Cut, CutterResult, CutType, CutReason, KeepSegment, MediaInfo, Word, WordStatus
 
 
 @pytest.fixture

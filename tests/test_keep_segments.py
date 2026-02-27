@@ -9,9 +9,9 @@ These tests verify that:
 
 import pytest
 
-from src.config import CutterConfig
-from src.models import Word, WordStatus, Cut, CutType, CutReason, KeepSegment
-from src.cutter import compute_cuts, compute_keep_segments
+from derush.config import CutterConfig
+from derush.models import Word, WordStatus, Cut, CutType, CutReason, KeepSegment
+from derush.cutter import compute_cuts, compute_keep_segments
 
 
 class TestNoOverlappingSegments:

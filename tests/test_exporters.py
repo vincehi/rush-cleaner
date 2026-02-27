@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from lxml import etree
 
-from src.exporters.base import BaseExporter
-from src.exporters.fcpxml import FCPXMLExporter
-from src.exporters.edl import EDLExporter
-from src.exporters.json import JSONExporter
-from src.models import MediaInfo
+from derush.exporters.base import BaseExporter
+from derush.exporters.fcpxml import FCPXMLExporter
+from derush.exporters.edl import EDLExporter
+from derush.exporters.json import JSONExporter
+from derush.models import MediaInfo
 
 
 class TestBaseExporter:

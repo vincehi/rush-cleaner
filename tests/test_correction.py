@@ -8,9 +8,9 @@ These tests verify that:
 
 import pytest
 
-from src.config import CutterConfig
-from src.models import Word, WordStatus
-from src.cutter import correct_word_timestamps
+from derush.config import CutterConfig
+from derush.models import Word, WordStatus
+from derush.cutter import correct_word_timestamps
 
 
 class TestMaxWordDuration:

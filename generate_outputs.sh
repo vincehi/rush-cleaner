@@ -91,7 +91,7 @@ echo ""
 echo -e "${BLUE}Step 2: Getting media info...${NC}"
 python -c "
 from pathlib import Path
-from src.media_info import get_media_info
+from derush.media_info import get_media_info
 
 media_info = get_media_info(Path('$INPUT_FILE'))
 print(f'Duration:   {media_info.duration:.2f}s')
@@ -103,12 +103,12 @@ echo ""
 echo -e "${BLUE}Step 3: Running cutting pipeline and exporting...${NC}"
 python -c "
 from pathlib import Path
-from src.cutter import run_pipeline
-from src.config import CutterConfig
-from src.exporters.fcpxml import FCPXMLExporter
-from src.exporters.edl import EDLExporter
-from src.exporters.json import JSONExporter
-from src.media_info import get_media_info
+from derush.cutter import run_pipeline
+from derush.config import CutterConfig
+from derush.exporters.fcpxml import FCPXMLExporter
+from derush.exporters.edl import EDLExporter
+from derush.exporters.json import JSONExporter
+from derush.media_info import get_media_info
 
 config = CutterConfig()
 

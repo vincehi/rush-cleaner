@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from src.exporters.base import BaseExporter
-from src.models import CutterResult, MediaInfo
+from derush.exporters.base import BaseExporter
+from derush.models import CutterResult, MediaInfo
 
 
 class JSONExporter(BaseExporter):

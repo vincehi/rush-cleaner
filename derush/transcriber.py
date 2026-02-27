@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from src.models import Segment, Word
+from derush.models import Segment, Word
 
 # Hotwords to bias Whisper toward transcribing filler words (improves detection)
 FILLER_HOTWORDS = (

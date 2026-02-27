@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from typer.testing import CliRunner
 
-from src.cli import app
+from derush.cli import app
 
 
 runner = CliRunner()
@@ -48,7 +48,7 @@ class TestCLI:
         test_file = tmp_path / "test.mp4"
         test_file.touch()
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--format", "invalid"])
 
@@ -61,7 +61,7 @@ class TestCLI:
         test_file.touch()
         output_file = tmp_path / "test.fcpxml"
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)])
 
@@ -74,7 +74,7 @@ class TestCLI:
         test_file.touch()
         output_file = tmp_path / "test.edl"
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--format", "edl", "-o", str(output_file)])
 
@@ -87,7 +87,7 @@ class TestCLI:
         test_file.touch()
         output_file = tmp_path / "custom_output.fcpxml"
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--output", str(output_file)])
 
@@ -98,7 +98,7 @@ class TestCLI:
         test_file = tmp_path / "test.mp4"
         test_file.touch()
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--fps", "30"])
 
@@ -114,7 +114,7 @@ class TestCLI:
         mock_whisperx = MagicMock()
         mock_whisperx.load_model.side_effect = RuntimeError("Transcription failed")
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file)])
 
@@ -156,7 +156,7 @@ class TestCLI:
         mock_whisperx.load_align_model.return_value = (MagicMock(), MagicMock())
         mock_whisperx.align.return_value = mock_model.transcribe.return_value
 
-        with patch("src.cli.get_media_info", return_value=sample_media_info), \
+        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file)])
 

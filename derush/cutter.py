@@ -11,8 +11,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from src.config import CutterConfig, DEFAULT_FILLERS, FILLER_VARIANTS
-from src.models import (
+from derush.config import CutterConfig, DEFAULT_FILLERS, FILLER_VARIANTS
+from derush.models import (
     Cut,
     CutterResult,
     CutReason,

@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from src.models import Segment, Word
-from src.transcriber import transcribe
+from derush.models import Segment, Word
+from derush.transcriber import transcribe
 
 
 class TestTranscribe:

@@ -13,12 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from src.config import CutterConfig
-from src.cutter import run_pipeline
-from src.exporters.edl import EDLExporter
-from src.exporters.fcpxml import FCPXMLExporter
-from src.exporters.json import JSONExporter
-from src.media_info import MediaInfo
+from derush.config import CutterConfig
+from derush.cutter import run_pipeline
+from derush.exporters.edl import EDLExporter
+from derush.exporters.fcpxml import FCPXMLExporter
+from derush.exporters.json import JSONExporter
+from derush.media_info import MediaInfo
 
 
 # Fixtures
@@ -38,7 +38,7 @@ def media_info():
     video_path = Path("tests/fixtures/sample.mov")
     if not video_path.exists():
         pytest.skip("Sample video not found")
-    from src.media_info import get_media_info
+    from derush.media_info import get_media_info
     return get_media_info(video_path)
 
 
@@ -388,7 +388,7 @@ class TestFCPXMLOutput:
 
         content = fcpxml_path.read_text()
 
-        # Extract file path from src attribute
+        # Extract file path from derush attribute
         import re
         match = re.search(r'src="file://([^"]+)"', content)
         if match:

@@ -8,9 +8,9 @@ These tests verify that:
 
 import pytest
 
-from src.models import Word, WordStatus
-from src.cutter import classify_words, is_filler, _build_filler_patterns
-from src.config import DEFAULT_FILLERS
+from derush.models import Word, WordStatus
+from derush.cutter import classify_words, is_filler, _build_filler_patterns
+from derush.config import DEFAULT_FILLERS
 
 
 class TestAuthorizedFillers:

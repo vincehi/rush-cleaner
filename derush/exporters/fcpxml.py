@@ -5,8 +5,8 @@ from pathlib import Path
 
 from lxml import etree
 
-from src.exporters.base import BaseExporter
-from src.models import CutterResult, MediaInfo
+from derush.exporters.base import BaseExporter
+from derush.models import CutterResult, MediaInfo
 
 
 class FCPXMLExporter(BaseExporter):

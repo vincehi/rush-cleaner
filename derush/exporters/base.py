@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from src.models import CutterResult, MediaInfo
+from derush.models import CutterResult, MediaInfo
 
 
 class BaseExporter(ABC):
@@ -27,11 +27,11 @@ class BaseExporter(ABC):
         pass
 
     @staticmethod
-    def sort_cuts_chronologically(cuts) -> list:
+    def sort_cuts_chronologically(cuts: list["Cut"]) -> list["Cut"]:
         """Sort cuts by start time."""
         return sorted(cuts, key=lambda c: c.start)
 
     @staticmethod
-    def sort_keep_segments_chronologically(segments) -> list:
+    def sort_keep_segments_chronologically(segments: list["KeepSegment"]) -> list["KeepSegment"]:
         """Sort keep segments by start time."""
         return sorted(segments, key=lambda s: s.start)

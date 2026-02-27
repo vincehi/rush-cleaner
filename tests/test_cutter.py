@@ -2,9 +2,9 @@
 
 import pytest
 
-from src.config import CutterConfig
-from src.models import Word, WordStatus, CutType, CutReason
-from src.cutter import (
+from derush.config import CutterConfig
+from derush.models import Word, WordStatus, CutType, CutReason
+from derush.cutter import (
     _normalize_word,
     _build_filler_patterns,
     is_filler,
@@ -251,7 +251,7 @@ class TestComputeKeepSegments:
 
     def test_basic_keep_segments(self):
         """Test basic keep segment computation."""
-        from src.models import Cut
+        from derush.models import Cut
 
         cuts = [
             Cut(start=0.0, end=1.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
@@ -278,7 +278,7 @@ class TestComputeKeepSegments:
 
     def test_cut_at_beginning(self):
         """Test with cut at the beginning."""
-        from src.models import Cut
+        from derush.models import Cut
 
         cuts = [
             Cut(start=0.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
@@ -292,7 +292,7 @@ class TestComputeKeepSegments:
 
     def test_cut_at_end(self):
         """Test with cut at the end."""
-        from src.models import Cut
+        from derush.models import Cut
 
         cuts = [
             Cut(start=3.0, end=5.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_AFTER_SPEECH),

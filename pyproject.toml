@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Video derushing tool - automatically detect silences and filler words for video editing"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 authors = [
     {name = "VinceHi", email = "contact@vincehi.fr"}
 ]
@@ -31,11 +31,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
+test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
+]
+lint = [
     "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+dev = [
+    "pre-commit>=3.6.0",
 ]
 
 [project.urls]
@@ -44,11 +50,11 @@ Repository = "https://github.com/vincentsourice/derush"
 Issues = "https://github.com/vincentsourice/derush/issues"
 
 [project.scripts]
-derush = "src.cli:app"
+derush = "derush.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src", "src.*"]
+include = ["derush", "derush.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -60,15 +66,17 @@ markers = [
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
-source = ["src"]
+source = ["derush"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
 
 [tool.ruff]

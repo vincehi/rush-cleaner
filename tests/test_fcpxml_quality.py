@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 from lxml import etree
 
-from src.config import CutterConfig
-from src.exporters.fcpxml import FCPXMLExporter
-from src.models import (
+from derush.config import CutterConfig
+from derush.exporters.fcpxml import FCPXMLExporter
+from derush.models import (
     Cut,
     CutterResult,
     CutReason,

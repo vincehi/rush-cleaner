@@ -175,7 +175,7 @@ Suppression de commentaires redondants dans `compute_cuts()` :
 
 #### `src/exporters/edl.py` - Import des constantes
 ```python
-from src.models import CutterResult, MediaInfo, NTSC_FPS, NTSC_FPS_TOLERANCE
+from derush.models import CutterResult, MediaInfo, NTSC_FPS, NTSC_FPS_TOLERANCE
 ```
 
 Utilisation des constantes partagées au lieu des valeurs littérales.
