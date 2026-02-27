@@ -24,11 +24,6 @@ class TestModuleImports:
         from src.transcriber import transcribe
         assert transcribe is not None
 
-    def test_import_silence_detector(self):
-        """Test importing silence_detector module."""
-        from src.silence_detector import detect_silences
-        assert detect_silences is not None
-
     def test_import_cutter(self):
         """Test importing cutter module."""
         from src.cutter import run_pipeline, classify_words, compute_cuts

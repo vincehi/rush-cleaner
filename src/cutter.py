@@ -24,6 +24,12 @@ from src.models import (
 )
 
 
+# Timing constants (in seconds)
+MINIMUM_WORD_DURATION = 0.05  # 50ms minimum duration
+MINIMUM_GAP_THRESHOLD = 0.01   # 10ms minimum gap to cut
+WORD_OVERLAP_BUFFER = 0.001    # 1ms buffer between words
+
+
 # Average word durations for common words (in seconds)
 # Used to correct abnormally long words
 AVERAGE_WORD_DURATIONS = {
@@ -106,7 +112,7 @@ def correct_word_timestamps(
             # Don't extend beyond the next word's start
             if i + 1 < len(words):
                 next_word = words[i + 1]
-                new_end = min(new_end, next_word.start - 0.001)
+                new_end = min(new_end, next_word.start - WORD_OVERLAP_BUFFER)
             
             # Don't extend beyond original end
             new_end = min(new_end, word.end)
@@ -114,7 +120,7 @@ def correct_word_timestamps(
             corrected_word = Word(
                 word=word.word,
                 start=word.start,
-                end=max(word.start + 0.05, new_end),  # Minimum 50ms duration
+                end=max(word.start + MINIMUM_WORD_DURATION, new_end),
                 score=word.score,
                 status=word.status
             )
@@ -128,22 +134,16 @@ def correct_word_timestamps(
 def _build_filler_patterns(fillers: list[str]) -> dict[str, re.Pattern]:
     """Build regex patterns for filler matching with word boundaries."""
     patterns = {}
-
     for filler in fillers:
-        # Check if this filler has known variants
-        variants = [filler]
+        variants = set([filler])
+        
         for base, vars_list in FILLER_VARIANTS.items():
-            if filler == base:
-                variants.extend(vars_list)
-            elif filler in vars_list:
-                variants.append(base)
-                variants.extend(vars_list)
-
-        # Create pattern that matches any variant
-        escaped_variants = [re.escape(v) for v in set(variants)]
-        pattern_str = r"^(?:" + "|".join(escaped_variants) + r")$"
+            if filler == base or filler in vars_list:
+                variants.update([base] + vars_list)
+        
+        pattern_str = r"^(?:" + "|".join(re.escape(v) for v in variants) + r")$"
         patterns[filler] = re.compile(pattern_str, re.IGNORECASE)
-
+    
     return patterns
 
 
@@ -162,10 +162,7 @@ def is_filler(word: str, filler_patterns: dict[str, re.Pattern]) -> bool:
     if not normalized:
         return False
 
-    for pattern in filler_patterns.values():
-        if pattern.match(normalized):
-            return True
-    return False
+    return any(pattern.match(normalized) for pattern in filler_patterns.values())
 
 
 def classify_words(
@@ -282,7 +279,7 @@ def compute_cuts(
                 gap_duration = gap_end - gap_start
 
                 # Only cut if there's an actual gap
-                if gap_duration > 0.01:
+                if gap_duration > MINIMUM_GAP_THRESHOLD:
                     cuts.append(Cut(
                         start=gap_start,
                         end=gap_end,
@@ -290,9 +287,7 @@ def compute_cuts(
                         reason=CutReason.GAP_AFTER_FILLER
                     ))
 
-    # 5. Cut gaps between segments (gaps between last word of a segment
-    #    and first word of next segment that are >= min_silence)
-    #    We detect segments by looking for large gaps in the word sequence
+    # 5. Cut gaps between segments
     for i in range(len(words) - 1):
         current = words[i]
         next_word = words[i + 1]

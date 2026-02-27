@@ -131,7 +131,7 @@ edl_exporter = EDLExporter()
 edl_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.edl'))
 
 json_exporter = JSONExporter()
-json_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.json'), '${BASENAME}_whisperx.json')
+json_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.json'))
 
 # Summary
 print()

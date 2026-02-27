@@ -32,7 +32,7 @@ class CutterConfig:
 # Only include true hesitation sounds/words that should always be cut
 # Avoid words that can be content words in context
 DEFAULT_FILLERS = {
-    "fr": ["euh", "ben", "bah", "hmm", "bon ben", "euh", "euhh"],
+    "fr": ["euh", "ben", "bah", "hmm", "bon ben", "euhh"],
     "en": ["um", "uh", "hmm", "umm", "uhh"],
 }
 

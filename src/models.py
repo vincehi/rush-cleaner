@@ -29,6 +29,11 @@ class CutReason(str, Enum):
     MERGED = "merged"
 
 
+# Timecode constants
+NTSC_FPS = 29.97
+NTSC_FPS_TOLERANCE = 0.01
+
+
 @dataclass
 class Segment:
     """Represents a transcription segment with multiple words."""
@@ -166,6 +171,6 @@ class MediaInfo:
         frames = int((seconds % 1) * self.fps)
 
         # Drop-frame notation for 29.97fps (use semicolon before frames)
-        separator = ";" if abs(self.fps - 29.97) < 0.01 else ":"
+        separator = ";" if abs(self.fps - NTSC_FPS) < NTSC_FPS_TOLERANCE else ":"
 
         return f"{hours:02d}:{minutes:02d}:{secs:02d}{separator}{frames:02d}"

@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Vincent Sourice", email = "contact@vincentsourice.com"}
+    {name = "VinceHi", email = "contact@vincehi.fr"}
 ]
 keywords = ["video", "editing", "transcription", "whisper", "silence-detection"]
 classifiers = [

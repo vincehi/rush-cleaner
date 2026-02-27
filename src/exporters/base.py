@@ -15,7 +15,6 @@ class BaseExporter(ABC):
         result: CutterResult,
         media_info: MediaInfo,
         output_path: Path,
-        whisperx_file: str = ""
     ) -> None:
         """
         Export cutting result to the specified format.
@@ -24,7 +23,6 @@ class BaseExporter(ABC):
             result: CutterResult with words, cuts, keep_segments, and summary
             media_info: Media file metadata
             output_path: Path to write the output file
-            whisperx_file: Name of the WhisperX source file
         """
         pass
 

@@ -15,7 +15,6 @@ class JSONExporter(BaseExporter):
         result: CutterResult,
         media_info: MediaInfo,
         output_path: Path,
-        whisperx_file: str = ""
     ) -> None:
         """
         Export cutting result to enriched JSON format.
@@ -24,7 +23,6 @@ class JSONExporter(BaseExporter):
             result: CutterResult with words, cuts, keep_segments, and summary
             media_info: Media file metadata
             output_path: Path to write the JSON file
-            whisperx_file: Name of the WhisperX source file
         """
         data = {
             "media_info": {
@@ -36,7 +34,6 @@ class JSONExporter(BaseExporter):
                 "has_video": media_info.has_video,
                 "file_path": media_info.file_path,
             },
-            "whisperx_file": whisperx_file,
             "words": {
                 "total": result.total_words,
                 "kept": result.kept_words,

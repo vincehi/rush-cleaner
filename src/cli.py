@@ -225,8 +225,7 @@ def main(
     exporter.export(
         result=result,
         media_info=media_info,
-        output_path=output,
-        whisperx_file=whisperx_output.name
+        output_path=output
     )
 
     typer.echo(f"\nOutput saved to: {output}")

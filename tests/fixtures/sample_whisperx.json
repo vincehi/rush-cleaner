@@ -1,0 +1,49 @@
+{
+  "segments": [
+    {
+      "start": 1.6,
+      "end": 12.775,
+      "text": " petite démo de test hmm je pense que voilà",
+      "words": [
+        {"word": "petite", "start": 1.6, "end": 2.543, "score": 0.806},
+        {"word": "démo", "start": 2.583, "end": 3.606, "score": 0.625},
+        {"word": "de", "start": 3.646, "end": 4.208, "score": 0.984},
+        {"word": "test", "start": 4.268, "end": 8.622, "score": 0.888},
+        {"word": "hmm", "start": 8.642, "end": 8.702, "score": 0.241},
+        {"word": "je", "start": 8.742, "end": 8.883, "score": 0.967},
+        {"word": "pense", "start": 8.923, "end": 9.284, "score": 0.981},
+        {"word": "que", "start": 9.324, "end": 12.113, "score": 0.844},
+        {"word": "voilà", "start": 12.153, "end": 12.775, "score": 0.829}
+      ]
+    },
+    {
+      "start": 14.999,
+      "end": 16.741,
+      "text": " de quoi par le ton",
+      "words": [
+        {"word": "de", "start": 14.999, "end": 15.186, "score": 0.814},
+        {"word": "quoi", "start": 15.227, "end": 15.414, "score": 0.944},
+        {"word": "par", "start": 15.455, "end": 15.58, "score": 0.784},
+        {"word": "le", "start": 15.6, "end": 15.704, "score": 0.81},
+        {"word": "ton", "start": 15.725, "end": 16.741, "score": 0.884}
+      ]
+    }
+  ],
+  "word_segments": [
+    {"word": "petite", "start": 1.6, "end": 2.543, "score": 0.806},
+    {"word": "démo", "start": 2.583, "end": 3.606, "score": 0.625},
+    {"word": "de", "start": 3.646, "end": 4.208, "score": 0.984},
+    {"word": "test", "start": 4.268, "end": 8.622, "score": 0.888},
+    {"word": "hmm", "start": 8.642, "end": 8.702, "score": 0.241},
+    {"word": "je", "start": 8.742, "end": 8.883, "score": 0.967},
+    {"word": "pense", "start": 8.923, "end": 9.284, "score": 0.981},
+    {"word": "que", "start": 9.324, "end": 12.113, "score": 0.844},
+    {"word": "voilà", "start": 12.153, "end": 12.775, "score": 0.829},
+    {"word": "de", "start": 14.999, "end": 15.186, "score": 0.814},
+    {"word": "quoi", "start": 15.227, "end": 15.414, "score": 0.944},
+    {"word": "par", "start": 15.455, "end": 15.58, "score": 0.784},
+    {"word": "le", "start": 15.6, "end": 15.704, "score": 0.81},
+    {"word": "ton", "start": 15.725, "end": 16.741, "score": 0.884}
+  ],
+  "language": "fr"
+}

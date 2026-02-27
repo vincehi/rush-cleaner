@@ -17,7 +17,6 @@ class FCPXMLExporter(BaseExporter):
         result: CutterResult,
         media_info: MediaInfo,
         output_path: Path,
-        whisperx_file: str = ""
     ) -> None:
         """
         Export segments to keep to FCPXML 1.9 format.
@@ -26,7 +25,6 @@ class FCPXMLExporter(BaseExporter):
             result: CutterResult with keep_segments
             media_info: Media file metadata
             output_path: Path to write the FCPXML file
-            whisperx_file: Name of the WhisperX source file (unused)
         """
         keep_segments = self.sort_keep_segments_chronologically(result.keep_segments)
 
