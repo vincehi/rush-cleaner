@@ -1,0 +1,47 @@
+{
+  "media_info": {
+    "fps": 28.306403351286654,
+    "fps_rational": "47300/1671",
+    "duration": 16.814739,
+    "width": 1620,
+    "height": 1080,
+    "has_video": true,
+    "file_path": "/Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov"
+  },
+  "cuts": [
+    {
+      "start": 0.0,
+      "end": 1.6,
+      "duration": 1.6,
+      "cut_type": "silence",
+      "label": "Silence 1.6s"
+    },
+    {
+      "start": 8.642,
+      "end": 8.702,
+      "duration": 0.0600000000000005,
+      "cut_type": "filler",
+      "label": "Filler: hmm"
+    },
+    {
+      "start": 12.775,
+      "end": 14.999,
+      "duration": 2.224,
+      "cut_type": "silence",
+      "label": "Silence 2.2s"
+    },
+    {
+      "start": 15.227,
+      "end": 15.414,
+      "duration": 0.1869999999999994,
+      "cut_type": "filler",
+      "label": "Filler: quoi"
+    }
+  ],
+  "summary": {
+    "total_cuts": 4,
+    "silence_count": 2,
+    "filler_count": 2,
+    "total_cut_duration": 4.071
+  }
+}

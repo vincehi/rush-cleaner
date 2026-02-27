@@ -54,4 +54,7 @@ class JSONExporter(BaseExporter):
             }
         }
 
-        output_path.write_text(json.dumps(data, indent=2))
+        try:
+            output_path.write_text(json.dumps(data, indent=2))
+        except OSError as e:
+            raise RuntimeError(f"Failed to write JSON file: {e}")

@@ -1,5 +1,6 @@
 """FCPXML 1.9 exporter for DaVinci Resolve."""
 
+import hashlib
 from pathlib import Path
 from urllib.request import pathname2url
 
@@ -111,13 +112,16 @@ class FCPXMLExporter(BaseExporter):
 
         # Write to file
         tree = etree.ElementTree(fcpxml)
-        tree.write(
-            output_path,
-            pretty_print=True,
-            xml_declaration=True,
-            encoding="UTF-8",
-            doctype="<!DOCTYPE fcpxml>"
-        )
+        try:
+            tree.write(
+                output_path,
+                pretty_print=True,
+                xml_declaration=True,
+                encoding="UTF-8",
+                doctype="<!DOCTYPE fcpxml>"
+            )
+        except OSError as e:
+            raise RuntimeError(f"Failed to write FCPXML file: {e}")
 
     def _calculate_keep_segments(
         self,
@@ -163,5 +167,4 @@ class FCPXMLExporter(BaseExporter):
 
     def _generate_uid(self, file_path: str) -> str:
         """Generate a UID based on file path."""
-        import hashlib
         return hashlib.md5(file_path.encode()).hexdigest().upper()

@@ -39,7 +39,7 @@ class TestModuleImports:
         from src.exporters.base import BaseExporter
         from src.exporters.fcpxml import FCPXMLExporter
         from src.exporters.edl import EDLExporter
-        from src.exporters.json_export import JSONExporter
+        from src.exporters.json import JSONExporter
 
         assert BaseExporter is not None
         assert FCPXMLExporter is not None

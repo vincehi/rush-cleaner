@@ -6,49 +6,11 @@ from pathlib import Path
 import pytest
 from lxml import etree
 
-from src.models import Cut, MediaInfo
 from src.exporters.base import BaseExporter
 from src.exporters.fcpxml import FCPXMLExporter
 from src.exporters.edl import EDLExporter
-from src.exporters.json_export import JSONExporter
-
-
-@pytest.fixture
-def sample_cuts():
-    """Create sample cuts for testing."""
-    return [
-        Cut(start=2.0, end=3.2, cut_type="silence", label="Silence 1.2s"),
-        Cut(start=15.0, end=15.3, cut_type="filler", label="Filler: euh"),
-        Cut(start=5.0, end=6.0, cut_type="silence", label="Silence 1.0s"),
-    ]
-
-
-@pytest.fixture
-def sample_media_info():
-    """Create sample media info for testing."""
-    return MediaInfo(
-        fps=25.0,
-        fps_rational="25/1",
-        duration=60.0,
-        width=1920,
-        height=1080,
-        has_video=True,
-        file_path="/path/to/video.mp4"
-    )
-
-
-@pytest.fixture
-def sample_media_info_2997():
-    """Create sample media info with 29.97fps (drop-frame)."""
-    return MediaInfo(
-        fps=29.97,
-        fps_rational="30000/1001",
-        duration=60.0,
-        width=1920,
-        height=1080,
-        has_video=True,
-        file_path="/path/to/video.mp4"
-    )
+from src.exporters.json import JSONExporter
+from src.models import MediaInfo
 
 
 class TestBaseExporter:
@@ -102,8 +64,8 @@ class TestFCPXMLExporter:
         assert format_el is not None
         assert asset_el is not None
 
-    def test_export_cuts_chronologically_ordered(self, tmp_path, sample_cuts, sample_media_info):
-        """Test that cuts are exported in chronological order."""
+    def test_export_creates_keep_segments(self, tmp_path, sample_cuts, sample_media_info):
+        """Test that FCPXML exports keep segments (segments between cuts)."""
         output_path = tmp_path / "output.fcpxml"
 
         exporter = FCPXMLExporter()
@@ -112,16 +74,21 @@ class TestFCPXMLExporter:
         tree = etree.parse(output_path)
         root = tree.getroot()
 
-        # Find all clips in spine
-        clips = root.xpath("//clip")
+        # Find all asset-clips in spine (these are the keep segments)
+        asset_clips = root.xpath("//asset-clip")
 
-        # Check order
-        assert clips[0].get("name") == "Silence 1.2s"  # starts at 2.0
-        assert clips[1].get("name") == "Silence 1.0s"  # starts at 5.0
-        assert clips[2].get("name") == "Filler: euh"   # starts at 15.0
+        # With cuts at [2.0-3.2], [5.0-6.0], [15.0-15.3] and duration 60s
+        # Keep segments should be: [0-2], [3.2-5], [6-15], [15.3-60]
+        assert len(asset_clips) == 4
 
-    def test_export_differentiates_silence_and_filler(self, tmp_path, sample_cuts, sample_media_info):
-        """Test that silence and filler cuts have different roles."""
+        # Check that clips are named "Keep 1", "Keep 2", etc.
+        assert asset_clips[0].get("name") == "Keep 1"
+        assert asset_clips[1].get("name") == "Keep 2"
+        assert asset_clips[2].get("name") == "Keep 3"
+        assert asset_clips[3].get("name") == "Keep 4"
+
+    def test_export_keep_segments_chronological(self, tmp_path, sample_cuts, sample_media_info):
+        """Test that keep segments are in chronological order on timeline."""
         output_path = tmp_path / "output.fcpxml"
 
         exporter = FCPXMLExporter()
@@ -130,13 +97,11 @@ class TestFCPXMLExporter:
         tree = etree.parse(output_path)
         root = tree.getroot()
 
-        clips = root.xpath("//clip")
+        asset_clips = root.xpath("//asset-clip")
 
-        silence_clips = [c for c in clips if c.get("role") == "silence"]
-        filler_clips = [c for c in clips if c.get("role") == "filler"]
-
-        assert len(silence_clips) == 2
-        assert len(filler_clips) == 1
+        # Check offsets are sequential (0s, then accumulating)
+        # First clip should start at offset 0
+        assert asset_clips[0].get("offset") == "0/60000s"
 
     def test_export_rational_fps(self, tmp_path, sample_cuts):
         """Test that rational FPS is used correctly."""

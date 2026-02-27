@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Your Name", email = "your@email.com"}
+    {name = "Vincent Sourice", email = "contact@vincentsourice.com"}
 ]
 keywords = ["video", "editing", "transcription", "whisper", "silence-detection"]
 classifiers = [
@@ -20,12 +20,13 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Video",
 ]
 
 dependencies = [
     "whisperx==3.8.1",
-    "typer>=0.9.0",
+    "typer>=0.9.0,<1.0.0",
     "lxml>=5.0.0",
 ]
 
@@ -34,7 +35,13 @@ dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
+    "ruff>=0.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/vincentsourice/derush"
+Repository = "https://github.com/vincentsourice/derush"
+Issues = "https://github.com/vincentsourice/derush/issues"
 
 [project.scripts]
 derush = "src.cli:app"
@@ -63,3 +70,24 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]

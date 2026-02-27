@@ -17,17 +17,45 @@
       "label": "Silence 1.6s"
     },
     {
-      "start": 15.254,
+      "start": 4.208,
+      "end": 4.268,
+      "duration": 0.05999999999999961,
+      "cut_type": "mixed",
+      "label": "Cut 0.1s"
+    },
+    {
+      "start": 8.622,
+      "end": 8.742,
+      "duration": 0.120000000000001,
+      "cut_type": "mixed",
+      "label": "Cut 0.1s"
+    },
+    {
+      "start": 12.775,
+      "end": 14.999,
+      "duration": 2.224,
+      "cut_type": "mixed",
+      "label": "Cut 2.2s"
+    },
+    {
+      "start": 15.186,
       "end": 15.455,
-      "duration": 0.2010000000000005,
-      "cut_type": "filler",
-      "label": "Filler: quoi"
+      "duration": 0.26900000000000013,
+      "cut_type": "mixed",
+      "label": "Cut 0.3s"
+    },
+    {
+      "start": 16.741,
+      "end": 16.814739,
+      "duration": 0.07373899999999978,
+      "cut_type": "silence",
+      "label": "Silence 0.1s"
     }
   ],
   "summary": {
-    "total_cuts": 2,
-    "silence_count": 1,
-    "filler_count": 1,
-    "total_cut_duration": 1.8010000000000006
+    "total_cuts": 6,
+    "silence_count": 2,
+    "filler_count": 0,
+    "total_cut_duration": 4.346739000000001
   }
 }

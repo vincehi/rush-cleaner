@@ -56,7 +56,10 @@ class EDLExporter(BaseExporter):
             lines.append("")
 
         # Write to file
-        output_path.write_text("\n".join(lines))
+        try:
+            output_path.write_text("\n".join(lines))
+        except OSError as e:
+            raise RuntimeError(f"Failed to write EDL file: {e}")
 
     def _seconds_to_timecode(
         self,

@@ -8,10 +8,13 @@
   <library>
     <event name="Dérushage Auto">
       <project name="Cuts">
-        <sequence format="r1" duration="900824/60000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+        <sequence format="r1" duration="748079/60000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
           <spine>
-            <asset-clip name="Keep 1" ref="r2" offset="0/60000s" duration="819240/60000s" start="96000/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
-            <asset-clip name="Keep 2" ref="r2" offset="819240/60000s" duration="81584/60000s" start="927300/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 1" ref="r2" offset="0/60000s" duration="156480/60000s" start="96000/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 2" ref="r2" offset="156480/60000s" duration="261240/60000s" start="256080/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 3" ref="r2" offset="417720/60000s" duration="241979/60000s" start="524520/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 4" ref="r2" offset="659700/60000s" duration="11219/60000s" start="899940/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 5" ref="r2" offset="670919/60000s" duration="77159/60000s" start="927300/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
           </spine>
         </sequence>
       </project>

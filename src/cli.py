@@ -5,12 +5,20 @@ from typing import Optional
 
 import typer
 
+from src import __version__
 from src.exporters import FCPXMLExporter, EDLExporter, JSONExporter
-from src.filler_detector import detect_fillers
+from src.filler_detector import get_keep_segments
 from src.media_info import get_media_info
 from src.models import MediaInfo
-from src.silence_detector import detect_silences
 from src.transcriber import transcribe
+
+
+def version_callback(value: bool) -> None:
+    """Callback to display version and exit."""
+    if value:
+        typer.echo(f"derush version {__version__}")
+        raise typer.Exit()
+
 
 app = typer.Typer(
     name="derush",
@@ -30,7 +38,7 @@ def main(
         "--output", "-o",
         help="Output file path (default: same as input with appropriate extension)"
     ),
-    format: str = typer.Option(
+    output_format: str = typer.Option(
         "fcpxml",
         "--format", "-f",
         help="Output format: fcpxml, edl, or json"
@@ -65,6 +73,18 @@ def main(
         "--device",
         help="Device for transcription: cpu or cuda"
     ),
+    chunk_size: int = typer.Option(
+        15,
+        "--chunk-size",
+        help="Max VAD chunk size in seconds (smaller = more segments, better filler detection)"
+    ),
+    version: bool = typer.Option(
+        False,
+        "--version", "-v",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit"
+    ),
 ):
     """
     Analyze a video/audio file and generate cuts for silences and filler words.
@@ -73,9 +93,9 @@ def main(
     Final Cut Pro, or Premiere Pro.
     """
     # Validate format
-    format = format.lower()
-    if format not in ["fcpxml", "edl", "json"]:
-        typer.echo(f"Error: Invalid format '{format}'. Use: fcpxml, edl, or json")
+    output_format = output_format.lower()
+    if output_format not in ["fcpxml", "edl", "json"]:
+        typer.echo(f"Error: Invalid format '{output_format}'. Use: fcpxml, edl, or json")
         raise typer.Exit(1)
 
     # Get media info
@@ -97,67 +117,75 @@ def main(
     typer.echo("\nTranscribing audio...")
     custom_fillers = [f.strip() for f in fillers.split(",")] if fillers else None
 
+    # Determine output directory for WhisperX result
+    if output:
+        output_dir = output.parent
+        whisperx_output = output_dir / f"{input_file.stem}_whisperx.json"
+    else:
+        output_dir = Path.cwd() / "output"
+        output_dir.mkdir(exist_ok=True)
+        whisperx_output = output_dir / f"{input_file.stem}_whisperx.json"
+
     try:
         segments = transcribe(
             file_path=input_file,
             language=language,
             model_size=model,
-            device=device
+            device=device,
+            chunk_size=chunk_size,
+            whisperx_output=whisperx_output,
         )
     except RuntimeError as e:
         typer.echo(f"Error during transcription: {e}")
         raise typer.Exit(1)
 
     typer.echo(f"  Found {len(segments)} segments")
+    typer.echo(f"  WhisperX output saved to: {whisperx_output}")
 
-    # Detect silences
-    typer.echo("\nDetecting silences...")
-    silences = detect_silences(
-        segments=segments,
-        min_duration=min_silence,
-        total_duration=media_info.duration
-    )
-    typer.echo(f"  Found {len(silences)} silences")
-
-    # Detect fillers
+    # Generate cuts using "keep segments" approach (positive selection)
     detected_language = language if language else "fr"  # Default fallback
-    typer.echo(f"\nDetecting filler words (language: {detected_language})...")
-    fillers_detected = detect_fillers(
+    typer.echo(f"\nAnalyzing content to keep (language: {detected_language})...")
+
+    all_cuts = get_keep_segments(
         segments=segments,
         language=detected_language,
-        custom_fillers=custom_fillers
+        custom_fillers=custom_fillers,
+        min_silence=min_silence,
+        total_duration=media_info.duration
     )
-    typer.echo(f"  Found {len(fillers_detected)} filler words")
 
-    # Combine all cuts
-    all_cuts = silences + fillers_detected
+    typer.echo(f"  Found {len(all_cuts)} sections to cut")
 
     # Determine output path
     if output is None:
         # Default to output/ directory at project root
-        output_dir = Path.cwd() / "output"
         output_dir.mkdir(exist_ok=True)
         
-        extension = {"fcpxml": ".fcpxml", "edl": ".edl", "json": ".json"}[format]
+        extension = {"fcpxml": ".fcpxml", "edl": ".edl", "json": ".json"}[output_format]
         output = output_dir / f"{input_file.stem}{extension}"
 
     # Export
-    typer.echo(f"\nExporting to {format.upper()}...")
+    typer.echo(f"\nExporting to {output_format.upper()}...")
     exporters = {
         "fcpxml": FCPXMLExporter(),
         "edl": EDLExporter(),
         "json": JSONExporter(),
     }
 
-    exporter = exporters[format]
+    exporter = exporters[output_format]
     exporter.export(cuts=all_cuts, media_info=media_info, output_path=output)
 
     # Summary
     total_cut_duration = sum(c.end - c.start for c in all_cuts)
+    silence_count = sum(1 for c in all_cuts if c.cut_type == "silence")
+    mixed_count = sum(1 for c in all_cuts if c.cut_type == "mixed")
+    
     typer.echo(f"\nSummary:")
     typer.echo(f"  Total cuts: {len(all_cuts)}")
-    typer.echo(f"  - Silences: {len(silences)}")
-    typer.echo(f"  - Fillers: {len(fillers_detected)}")
+    if silence_count > 0:
+        typer.echo(f"  - Silences: {silence_count}")
+    if mixed_count > 0:
+        typer.echo(f"  - Mixed (fillers + silences): {mixed_count}")
     typer.echo(f"  Total cut duration: {total_cut_duration:.1f}s")
     typer.echo(f"\nOutput saved to: {output}")
 

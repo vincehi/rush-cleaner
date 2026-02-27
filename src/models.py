@@ -31,6 +31,42 @@ class Cut:
     label: str          # Ex: "Silence 1.2s" | "Filler: euh"
 
 
+def merge_overlapping_cuts(cuts: list[Cut]) -> list[Cut]:
+    """
+    Merge overlapping or adjacent cuts into single cuts.
+
+    Args:
+        cuts: List of cuts (potentially unsorted and overlapping)
+
+    Returns:
+        List of merged cuts, sorted by start time
+    """
+    if not cuts:
+        return []
+
+    # Sort cuts by start time
+    sorted_cuts = sorted(cuts, key=lambda c: c.start)
+
+    merged = [sorted_cuts[0]]
+
+    for current in sorted_cuts[1:]:
+        previous = merged[-1]
+
+        # Check if current cut overlaps or is adjacent to the previous one
+        if current.start <= previous.end:
+            # Extend the previous cut to include the current one
+            merged[-1] = Cut(
+                start=previous.start,
+                end=max(previous.end, current.end),
+                cut_type=previous.cut_type if previous.cut_type == current.cut_type else "mixed",
+                label=f"Merged ({previous.cut_type}/{current.cut_type})"
+            )
+        else:
+            merged.append(current)
+
+    return merged
+
+
 @dataclass
 class MediaInfo:
     """Video/Audio file metadata."""
