@@ -29,10 +29,12 @@ class TestModuleImports:
         from src.silence_detector import detect_silences
         assert detect_silences is not None
 
-    def test_import_filler_detector(self):
-        """Test importing filler_detector module."""
-        from src.filler_detector import detect_fillers
-        assert detect_fillers is not None
+    def test_import_cutter(self):
+        """Test importing cutter module."""
+        from src.cutter import run_pipeline, classify_words, compute_cuts
+        assert run_pipeline is not None
+        assert classify_words is not None
+        assert compute_cuts is not None
 
     def test_import_exporters(self):
         """Test importing exporter modules."""

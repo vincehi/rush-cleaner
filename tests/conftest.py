@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.models import Cut, MediaInfo
+from src.models import Cut, CutterResult, CutType, CutReason, KeepSegment, MediaInfo, Word, WordStatus
 
 
 @pytest.fixture
@@ -39,10 +39,39 @@ def sample_media_info_2997():
 def sample_cuts():
     """Create sample cuts for testing."""
     return [
-        Cut(start=2.0, end=3.2, cut_type="silence", label="Silence 1.2s"),
-        Cut(start=15.0, end=15.3, cut_type="filler", label="Filler: euh"),
-        Cut(start=5.0, end=6.0, cut_type="silence", label="Silence 1.0s"),
+        Cut(start=2.0, end=3.2, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+        Cut(start=15.0, end=15.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"),
+        Cut(start=5.0, end=6.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
     ]
+
+
+@pytest.fixture
+def sample_cutter_result(sample_cuts):
+    """Create sample cutter result for testing."""
+    words = [
+        Word(word="Hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+        Word(word="world", start=0.6, end=1.0, score=0.9, status=WordStatus.KEPT),
+        Word(word="euh", start=15.0, end=15.3, score=0.8, status=WordStatus.FILLER),
+    ]
+
+    keep_segments = [
+        KeepSegment(start=0.0, end=2.0),
+        KeepSegment(start=3.2, end=5.0),
+        KeepSegment(start=6.0, end=15.0),
+        KeepSegment(start=15.3, end=60.0),
+    ]
+
+    return CutterResult(
+        words=words,
+        cuts=sample_cuts,
+        keep_segments=keep_segments,
+        total_words=3,
+        kept_words=2,
+        filler_words=1,
+        original_duration=60.0,
+        final_duration=57.5,
+        cut_duration=2.5,
+    )
 
 
 @pytest.fixture

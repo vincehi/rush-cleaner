@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from src.exporters.base import BaseExporter
-from src.models import Cut, MediaInfo
+from src.models import CutterResult, MediaInfo
 
 
 class EDLExporter(BaseExporter):
@@ -11,19 +11,21 @@ class EDLExporter(BaseExporter):
 
     def export(
         self,
-        cuts: list[Cut],
+        result: CutterResult,
         media_info: MediaInfo,
-        output_path: Path
+        output_path: Path,
+        whisperx_file: str = ""
     ) -> None:
         """
         Export cuts to EDL CMX3600 format.
 
         Args:
-            cuts: List of cuts to export
+            result: CutterResult with cuts
             media_info: Media file metadata
             output_path: Path to write the EDL file
+            whisperx_file: Name of the WhisperX source file (unused)
         """
-        cuts = self.sort_cuts_chronologically(cuts)
+        cuts = self.sort_cuts_chronologically(result.cuts)
 
         # Determine drop-frame mode
         is_drop_frame = abs(media_info.fps - 29.97) < 0.01
@@ -50,8 +52,13 @@ class EDLExporter(BaseExporter):
             line = f"{event_num}  {reel:6s}  V     C        {tc_in} {tc_out} {tc_in} {tc_out}"
             lines.append(line)
 
-            # Comment line with label
-            comment = f"* {cut.label.upper()}"
+            # Comment line with type and reason
+            label = f"{cut.cut_type.value.upper()}"
+            if cut.word:
+                label += f" ({cut.word})"
+            elif cut.reason.value:
+                label += f" ({cut.reason.value})"
+            comment = f"* {label}"
             lines.append(comment)
             lines.append("")
 

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from src.models import Cut, MediaInfo
+from src.models import CutterResult, MediaInfo
 
 
 class BaseExporter(ABC):
@@ -12,21 +12,28 @@ class BaseExporter(ABC):
     @abstractmethod
     def export(
         self,
-        cuts: list[Cut],
+        result: CutterResult,
         media_info: MediaInfo,
-        output_path: Path
+        output_path: Path,
+        whisperx_file: str = ""
     ) -> None:
         """
-        Export cuts to the specified format.
+        Export cutting result to the specified format.
 
         Args:
-            cuts: List of cuts to export
+            result: CutterResult with words, cuts, keep_segments, and summary
             media_info: Media file metadata
             output_path: Path to write the output file
+            whisperx_file: Name of the WhisperX source file
         """
         pass
 
     @staticmethod
-    def sort_cuts_chronologically(cuts: list[Cut]) -> list[Cut]:
+    def sort_cuts_chronologically(cuts) -> list:
         """Sort cuts by start time."""
         return sorted(cuts, key=lambda c: c.start)
+
+    @staticmethod
+    def sort_keep_segments_chronologically(segments) -> list:
+        """Sort keep segments by start time."""
+        return sorted(segments, key=lambda s: s.start)

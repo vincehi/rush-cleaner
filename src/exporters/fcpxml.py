@@ -2,12 +2,11 @@
 
 import hashlib
 from pathlib import Path
-from urllib.request import pathname2url
 
 from lxml import etree
 
 from src.exporters.base import BaseExporter
-from src.models import Cut, MediaInfo
+from src.models import CutterResult, MediaInfo
 
 
 class FCPXMLExporter(BaseExporter):
@@ -15,26 +14,26 @@ class FCPXMLExporter(BaseExporter):
 
     def export(
         self,
-        cuts: list[Cut],
+        result: CutterResult,
         media_info: MediaInfo,
-        output_path: Path
+        output_path: Path,
+        whisperx_file: str = ""
     ) -> None:
         """
         Export segments to keep to FCPXML 1.9 format.
 
         Args:
-            cuts: List of cuts (segments to remove)
+            result: CutterResult with keep_segments
             media_info: Media file metadata
             output_path: Path to write the FCPXML file
+            whisperx_file: Name of the WhisperX source file (unused)
         """
-        cuts = self.sort_cuts_chronologically(cuts)
+        keep_segments = self.sort_keep_segments_chronologically(result.keep_segments)
 
-        # Calculate segments to keep (between cuts)
-        keep_segments = self._calculate_keep_segments(cuts, media_info.duration)
-
-        # Parse frame rate rational
+        # Parse frame rate rational (e.g., "47300/1671" for ~28.306 fps)
         fps_num, fps_den = media_info.fps_rational.split("/")
-        fps = float(fps_num) / float(fps_den)
+        fps_num = int(fps_num)
+        fps_den = int(fps_den)
 
         # Create root element
         fcpxml = etree.Element("fcpxml", version="1.9")
@@ -42,7 +41,7 @@ class FCPXMLExporter(BaseExporter):
         # Resources section
         resources = etree.SubElement(fcpxml, "resources")
 
-        # Format element
+        # Format element - use actual frame rate from media
         etree.SubElement(
             resources,
             "format",
@@ -54,8 +53,8 @@ class FCPXMLExporter(BaseExporter):
         )
 
         # Asset element with proper time values
-        file_url = "file://" + pathname2url(media_info.file_path)
-        asset = etree.SubElement(
+        file_url = Path(media_info.file_path).as_uri()
+        etree.SubElement(
             resources,
             "asset",
             id="r2",
@@ -63,7 +62,7 @@ class FCPXMLExporter(BaseExporter):
             uid=self._generate_uid(media_info.file_path),
             src=file_url,
             start="0s",
-            duration=self._seconds_to_rational(media_info.duration, fps),
+            duration=self._seconds_to_rational(media_info.duration, fps_num, fps_den),
             hasVideo="1" if media_info.has_video else "0",
             hasAudio="1",
             audioSources="1",
@@ -77,38 +76,43 @@ class FCPXMLExporter(BaseExporter):
         event = etree.SubElement(library, "event", name="Dérushage Auto")
         project = etree.SubElement(event, "project", name="Cuts")
 
-        # Sequence
-        total_duration = sum(seg["duration"] for seg in keep_segments)
+        # Spine (timeline container) - created first to calculate total duration
+        spine = etree.Element("spine")
+
+        # Add keep segments as asset-clips
+        # Calculate offsets in frames to avoid floating-point accumulation errors
+        timeline_frame = 0
+        for i, segment in enumerate(keep_segments, 1):
+            # Convert segment times to frames
+            start_frame = self._seconds_to_frames(segment.start, fps_num, fps_den)
+            duration_frames = self._seconds_to_frames(segment.duration, fps_num, fps_den)
+
+            etree.SubElement(
+                spine,
+                "asset-clip",
+                name=f"Keep {i}",
+                ref="r2",
+                offset=self._frames_to_rational(timeline_frame, fps_num, fps_den),
+                duration=self._frames_to_rational(duration_frames, fps_num, fps_den),
+                start=self._frames_to_rational(start_frame, fps_num, fps_den),
+                format="r1",
+                tcFormat="NDF",
+                audioRole="dialogue"
+            )
+            timeline_frame += duration_frames
+
+        # Sequence - duration calculated from actual total frames
         sequence = etree.SubElement(
             project,
             "sequence",
             format="r1",
-            duration=self._seconds_to_rational(total_duration, fps),
+            duration=self._frames_to_rational(timeline_frame, fps_num, fps_den),
             tcStart="0s",
             tcFormat="NDF",
             audioLayout="stereo",
             audioRate="48k"
         )
-
-        # Spine (timeline container)
-        spine = etree.SubElement(sequence, "spine")
-
-        # Add keep segments as asset-clips
-        timeline_offset = 0.0
-        for i, segment in enumerate(keep_segments, 1):
-            asset_clip = etree.SubElement(
-                spine,
-                "asset-clip",
-                name=f"Keep {i}",
-                ref="r2",
-                offset=self._seconds_to_rational(timeline_offset, fps),
-                duration=self._seconds_to_rational(segment["duration"], fps),
-                start=self._seconds_to_rational(segment["source_start"], fps),
-                format="r1",
-                tcFormat="NDF",
-                audioRole="dialogue"
-            )
-            timeline_offset += segment["duration"]
+        sequence.append(spine)
 
         # Write to file
         tree = etree.ElementTree(fcpxml)
@@ -123,47 +127,23 @@ class FCPXMLExporter(BaseExporter):
         except OSError as e:
             raise RuntimeError(f"Failed to write FCPXML file: {e}")
 
-    def _calculate_keep_segments(
-        self,
-        cuts: list[Cut],
-        total_duration: float
-    ) -> list[dict]:
-        """
-        Calculate segments to keep between cuts.
+    def _seconds_to_frames(self, seconds: float, fps_num: int, fps_den: int) -> int:
+        """Convert seconds to number of frames (rounded)."""
+        # frames = seconds * (fps_num / fps_den)
+        # Use round() for proper rounding instead of truncation
+        return round(seconds * fps_num / fps_den)
 
-        Args:
-            cuts: Sorted list of cuts (segments to remove)
-            total_duration: Total media duration
+    def _frames_to_rational(self, frames: int, fps_num: int, fps_den: int) -> str:
+        """Convert frame count to rational time (num/den)s format."""
+        # Time in rational form: frames * frame_duration
+        # = frames * (fps_den / fps_num) seconds
+        # = (frames * fps_den) / fps_num seconds
+        return f"{frames * fps_den}/{fps_num}s"
 
-        Returns:
-            List of segments to keep with source_start, duration
-        """
-        segments = []
-        prev_end = 0.0
-
-        for cut in cuts:
-            if cut.start > prev_end:
-                segments.append({
-                    "source_start": prev_end,
-                    "duration": cut.start - prev_end
-                })
-            prev_end = cut.end
-
-        # Add final segment if there's content after the last cut
-        if prev_end < total_duration:
-            segments.append({
-                "source_start": prev_end,
-                "duration": total_duration - prev_end
-            })
-
-        return segments
-
-    def _seconds_to_rational(self, seconds: float, fps: float) -> str:
+    def _seconds_to_rational(self, seconds: float, fps_num: int, fps_den: int) -> str:
         """Convert seconds to rational time (num/den)s format."""
-        # Use a high precision denominator for accuracy
-        denominator = 60000  # Common base for most frame rates
-        numerator = int(seconds * denominator)
-        return f"{numerator}/{denominator}s"
+        frames = self._seconds_to_frames(seconds, fps_num, fps_den)
+        return self._frames_to_rational(frames, fps_num, fps_den)
 
     def _generate_uid(self, file_path: str) -> str:
         """Generate a UID based on file path."""

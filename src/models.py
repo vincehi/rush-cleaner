@@ -1,7 +1,41 @@
 """Data models for the derush tool."""
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
+
+
+class WordStatus(str, Enum):
+    """Status of a word in the cutting pipeline."""
+    KEPT = "kept"
+    FILLER = "filler"
+
+
+class CutType(str, Enum):
+    """Type of cut."""
+    SILENCE = "silence"
+    FILLER = "filler"
+    GAP = "gap"
+    MIXED = "mixed"
+
+
+class CutReason(str, Enum):
+    """Reason for a cut."""
+    GAP_BEFORE_SPEECH = "gap_before_speech"
+    GAP_AFTER_SPEECH = "gap_after_speech"
+    GAP_BETWEEN_SEGMENTS = "gap_between_segments"
+    FILLER_WORD = "filler_word"
+    GAP_AFTER_FILLER = "gap_after_filler"
+    MERGED = "merged"
+
+
+@dataclass
+class Segment:
+    """Represents a transcription segment with multiple words."""
+    start: float          # In seconds
+    end: float            # In seconds
+    text: str             # Full text of the segment
+    words: list["Word"]   # Word-level timestamps
 
 
 @dataclass
@@ -11,27 +45,55 @@ class Word:
     start: float  # In seconds
     end: float    # In seconds
     score: float  # Confidence score from WhisperX
-
-
-@dataclass
-class Segment:
-    """Represents a transcribed segment with timing."""
-    start: float        # In seconds
-    end: float          # In seconds
-    text: str
-    words: list[Word]   # Word-level alignment from WhisperX
+    status: WordStatus = WordStatus.KEPT  # Set during classification
 
 
 @dataclass
 class Cut:
     """Represents a segment to cut from the video."""
-    start: float        # In seconds
-    end: float          # In seconds
-    cut_type: str       # "silence" | "filler"
-    label: str          # Ex: "Silence 1.2s" | "Filler: euh"
+    start: float          # In seconds
+    end: float            # In seconds
+    cut_type: CutType     # Type of cut
+    reason: CutReason     # Why this cut was made
+    word: Optional[str] = None  # For filler cuts, the word that was cut
 
 
-def merge_overlapping_cuts(cuts: list[Cut]) -> list[Cut]:
+@dataclass
+class KeepSegment:
+    """Represents a segment to keep in the final video."""
+    start: float    # In seconds
+    end: float      # In seconds
+    
+    @property
+    def duration(self) -> float:
+        """Duration of the segment in seconds."""
+        return self.end - self.start
+
+
+@dataclass
+class CutterResult:
+    """Result of the cutting pipeline."""
+    words: list[Word]              # All words with their status
+    cuts: list[Cut]                # Segments to cut
+    keep_segments: list[KeepSegment]  # Segments to keep
+    
+    # Summary stats
+    total_words: int
+    kept_words: int
+    filler_words: int
+    original_duration: float
+    final_duration: float
+    cut_duration: float
+    
+    @property
+    def cut_percentage(self) -> float:
+        """Percentage of the video that will be cut."""
+        if self.original_duration == 0:
+            return 0.0
+        return (self.cut_duration / self.original_duration) * 100
+
+
+def merge_adjacent_cuts(cuts: list[Cut]) -> list[Cut]:
     """
     Merge overlapping or adjacent cuts into single cuts.
 
@@ -54,12 +116,18 @@ def merge_overlapping_cuts(cuts: list[Cut]) -> list[Cut]:
 
         # Check if current cut overlaps or is adjacent to the previous one
         if current.start <= previous.end:
-            # Extend the previous cut to include the current one
+            # Determine merged type
+            if previous.cut_type == current.cut_type:
+                merged_type = previous.cut_type
+            else:
+                merged_type = CutType.MIXED
+            
             merged[-1] = Cut(
                 start=previous.start,
                 end=max(previous.end, current.end),
-                cut_type=previous.cut_type if previous.cut_type == current.cut_type else "mixed",
-                label=f"Merged ({previous.cut_type}/{current.cut_type})"
+                cut_type=merged_type,
+                reason=CutReason.MERGED,
+                word=None
             )
         else:
             merged.append(current)

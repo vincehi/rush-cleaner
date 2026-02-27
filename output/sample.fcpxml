@@ -3,18 +3,17 @@
 <fcpxml version="1.9">
   <resources>
     <format id="r1" name="FFVideoFormat1620x1080" frameDuration="1671/47300s" width="1620" height="1080"/>
-    <asset id="r2" name="sample" uid="59DF6445A04C4A3527B179EA1320BD10" src="file:///Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov" start="0s" duration="1008884/60000s" hasVideo="1" hasAudio="1" audioSources="1" audioChannels="2" audioRate="48k" format="r1"/>
+    <asset id="r2" name="sample" uid="59DF6445A04C4A3527B179EA1320BD10" src="file:///Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov" start="0s" duration="795396/47300s" hasVideo="1" hasAudio="1" audioSources="1" audioChannels="2" audioRate="48k" format="r1"/>
   </resources>
   <library>
     <event name="Dérushage Auto">
       <project name="Cuts">
-        <sequence format="r1" duration="748079/60000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+        <sequence format="r1" duration="294096/47300s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
           <spine>
-            <asset-clip name="Keep 1" ref="r2" offset="0/60000s" duration="156480/60000s" start="96000/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
-            <asset-clip name="Keep 2" ref="r2" offset="156480/60000s" duration="261240/60000s" start="256080/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
-            <asset-clip name="Keep 3" ref="r2" offset="417720/60000s" duration="241979/60000s" start="524520/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
-            <asset-clip name="Keep 4" ref="r2" offset="659700/60000s" duration="11219/60000s" start="899940/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
-            <asset-clip name="Keep 5" ref="r2" offset="670919/60000s" duration="77159/60000s" start="927300/60000s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 1" ref="r2" offset="0/47300s" duration="142035/47300s" start="75195/47300s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 2" ref="r2" offset="142035/47300s" duration="36762/47300s" start="412737/47300s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 3" ref="r2" offset="178797/47300s" duration="30078/47300s" start="574824/47300s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
+            <asset-clip name="Keep 4" ref="r2" offset="208875/47300s" duration="85221/47300s" start="710175/47300s" format="r1" tcFormat="NDF" audioRole="dialogue"/>
           </spine>
         </sequence>
       </project>

@@ -6,10 +6,10 @@ from typing import Optional
 import typer
 
 from src import __version__
-from src.exporters import FCPXMLExporter, EDLExporter, JSONExporter
-from src.filler_detector import get_keep_segments
+from src.config import CutterConfig
+from src.cutter import run_pipeline
+from src.exporters import JSONExporter, get_fcpxml_exporter, get_edl_exporter
 from src.media_info import get_media_info
-from src.models import MediaInfo
 from src.transcriber import transcribe
 
 
@@ -39,7 +39,7 @@ def main(
         help="Output file path (default: same as input with appropriate extension)"
     ),
     output_format: str = typer.Option(
-        "fcpxml",
+        "json",
         "--format", "-f",
         help="Output format: fcpxml, edl, or json"
     ),
@@ -51,7 +51,12 @@ def main(
     min_silence: float = typer.Option(
         0.5,
         "--min-silence",
-        help="Minimum silence duration in seconds"
+        help="Minimum silence duration in seconds to cut"
+    ),
+    min_gap: float = typer.Option(
+        0.3,
+        "--min-gap",
+        help="Minimum gap between words to cut (smaller gaps are kept for natural flow)"
     ),
     fillers: Optional[str] = typer.Option(
         None,
@@ -78,9 +83,19 @@ def main(
         "--chunk-size",
         help="Max VAD chunk size in seconds (smaller = more segments, better filler detection)"
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose", "-v",
+        help="Show detailed cutting decisions"
+    ),
+    preview: bool = typer.Option(
+        False,
+        "--preview",
+        help="Show summary without generating files (dry-run)"
+    ),
     version: bool = typer.Option(
         False,
-        "--version", "-v",
+        "--version",
         callback=version_callback,
         is_eager=True,
         help="Show version and exit"
@@ -142,51 +157,78 @@ def main(
     typer.echo(f"  Found {len(segments)} segments")
     typer.echo(f"  WhisperX output saved to: {whisperx_output}")
 
-    # Generate cuts using "keep segments" approach (positive selection)
-    detected_language = language if language else "fr"  # Default fallback
-    typer.echo(f"\nAnalyzing content to keep (language: {detected_language})...")
-
-    all_cuts = get_keep_segments(
-        segments=segments,
-        language=detected_language,
-        custom_fillers=custom_fillers,
+    # Build configuration
+    config = CutterConfig(
         min_silence=min_silence,
-        total_duration=media_info.duration
+        min_gap_cut=min_gap,
+        gap_after_filler=True,
     )
 
-    typer.echo(f"  Found {len(all_cuts)} sections to cut")
+    # Determine language (fallback to fr if not specified)
+    detected_language = language if language else "fr"
+
+    # Run cutting pipeline
+    typer.echo(f"\nRunning cutting pipeline (language: {detected_language})...")
+
+    result = run_pipeline(
+        whisperx_path=whisperx_output,
+        total_duration=media_info.duration,
+        language=detected_language,
+        custom_fillers=custom_fillers,
+        config=config,
+    )
+
+    # Verbose output
+    if verbose:
+        typer.echo("\nWords classification:")
+        for w in result.words:
+            status_icon = "✗" if w.status.value == "filler" else "✓"
+            typer.echo(f"  {status_icon} {w.word} ({w.start:.3f}-{w.end:.3f}) [{w.status.value}]")
+
+        typer.echo("\nCuts:")
+        for c in result.cuts:
+            word_info = f" ({c.word})" if c.word else ""
+            typer.echo(f"  [{c.start:.3f}-{c.end:.3f}] {c.cut_type.value}: {c.reason.value}{word_info}")
+
+        typer.echo("\nKeep segments:")
+        for s in result.keep_segments:
+            typer.echo(f"  [{s.start:.3f}-{s.end:.3f}] ({s.duration:.3f}s)")
+
+    # Summary
+    typer.echo(f"\nSummary:")
+    typer.echo(f"  Words: {result.total_words} total ({result.kept_words} kept, {result.filler_words} fillers)")
+    typer.echo(f"  Cuts: {len(result.cuts)} sections")
+    typer.echo(f"  Original duration: {result.original_duration:.1f}s")
+    typer.echo(f"  Final duration: {result.final_duration:.1f}s")
+    typer.echo(f"  Cut duration: {result.cut_duration:.1f}s ({result.cut_percentage:.1f}%)")
+
+    # Preview mode: stop here
+    if preview:
+        typer.echo("\n[Preview mode - no files generated]")
+        raise typer.Exit()
 
     # Determine output path
     if output is None:
-        # Default to output/ directory at project root
         output_dir.mkdir(exist_ok=True)
-        
         extension = {"fcpxml": ".fcpxml", "edl": ".edl", "json": ".json"}[output_format]
         output = output_dir / f"{input_file.stem}{extension}"
 
     # Export
     typer.echo(f"\nExporting to {output_format.upper()}...")
     exporters = {
-        "fcpxml": FCPXMLExporter(),
-        "edl": EDLExporter(),
+        "fcpxml": get_fcpxml_exporter(),
+        "edl": get_edl_exporter(),
         "json": JSONExporter(),
     }
 
     exporter = exporters[output_format]
-    exporter.export(cuts=all_cuts, media_info=media_info, output_path=output)
+    exporter.export(
+        result=result,
+        media_info=media_info,
+        output_path=output,
+        whisperx_file=whisperx_output.name
+    )
 
-    # Summary
-    total_cut_duration = sum(c.end - c.start for c in all_cuts)
-    silence_count = sum(1 for c in all_cuts if c.cut_type == "silence")
-    mixed_count = sum(1 for c in all_cuts if c.cut_type == "mixed")
-    
-    typer.echo(f"\nSummary:")
-    typer.echo(f"  Total cuts: {len(all_cuts)}")
-    if silence_count > 0:
-        typer.echo(f"  - Silences: {silence_count}")
-    if mixed_count > 0:
-        typer.echo(f"  - Mixed (fillers + silences): {mixed_count}")
-    typer.echo(f"  Total cut duration: {total_cut_duration:.1f}s")
     typer.echo(f"\nOutput saved to: {output}")
 
 

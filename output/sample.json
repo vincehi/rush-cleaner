@@ -8,54 +8,171 @@
     "has_video": true,
     "file_path": "/Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov"
   },
+  "whisperx_file": "sample_whisperx.json",
+  "words": {
+    "total": 14,
+    "kept": 13,
+    "cut": 1,
+    "list": [
+      {
+        "word": "petite",
+        "start": 1.6,
+        "end": 2.543,
+        "score": 0.806,
+        "status": "kept"
+      },
+      {
+        "word": "démo",
+        "start": 2.583,
+        "end": 3.606,
+        "score": 0.625,
+        "status": "kept"
+      },
+      {
+        "word": "de",
+        "start": 3.646,
+        "end": 4.208,
+        "score": 0.984,
+        "status": "kept"
+      },
+      {
+        "word": "test",
+        "start": 4.268,
+        "end": 4.588,
+        "score": 0.888,
+        "status": "kept"
+      },
+      {
+        "word": "hmm",
+        "start": 8.642,
+        "end": 8.702,
+        "score": 0.241,
+        "status": "filler"
+      },
+      {
+        "word": "je",
+        "start": 8.742,
+        "end": 8.883,
+        "score": 0.967,
+        "status": "kept"
+      },
+      {
+        "word": "pense",
+        "start": 8.923,
+        "end": 9.284,
+        "score": 0.981,
+        "status": "kept"
+      },
+      {
+        "word": "que",
+        "start": 9.324,
+        "end": 9.524,
+        "score": 0.844,
+        "status": "kept"
+      },
+      {
+        "word": "voilà",
+        "start": 12.153,
+        "end": 12.775,
+        "score": 0.829,
+        "status": "kept"
+      },
+      {
+        "word": "de",
+        "start": 14.999,
+        "end": 15.186,
+        "score": 0.814,
+        "status": "kept"
+      },
+      {
+        "word": "quoi",
+        "start": 15.227,
+        "end": 15.414,
+        "score": 0.944,
+        "status": "kept"
+      },
+      {
+        "word": "par",
+        "start": 15.455,
+        "end": 15.58,
+        "score": 0.784,
+        "status": "kept"
+      },
+      {
+        "word": "le",
+        "start": 15.6,
+        "end": 15.704,
+        "score": 0.81,
+        "status": "kept"
+      },
+      {
+        "word": "ton",
+        "start": 15.725,
+        "end": 16.741,
+        "score": 0.884,
+        "status": "kept"
+      }
+    ]
+  },
   "cuts": [
     {
       "start": 0.0,
       "end": 1.6,
       "duration": 1.6,
-      "cut_type": "silence",
-      "label": "Silence 1.6s"
+      "type": "silence",
+      "reason": "gap_before_speech"
     },
     {
-      "start": 4.208,
-      "end": 4.268,
-      "duration": 0.05999999999999961,
-      "cut_type": "mixed",
-      "label": "Cut 0.1s"
-    },
-    {
-      "start": 8.622,
+      "start": 4.588,
       "end": 8.742,
-      "duration": 0.120000000000001,
-      "cut_type": "mixed",
-      "label": "Cut 0.1s"
+      "duration": 4.154,
+      "type": "mixed",
+      "reason": "merged"
+    },
+    {
+      "start": 9.524,
+      "end": 12.153,
+      "duration": 2.629,
+      "type": "silence",
+      "reason": "gap_between_segments"
     },
     {
       "start": 12.775,
       "end": 14.999,
       "duration": 2.224,
-      "cut_type": "mixed",
-      "label": "Cut 2.2s"
+      "type": "silence",
+      "reason": "gap_between_segments"
+    }
+  ],
+  "keep_segments": [
+    {
+      "start": 1.6,
+      "end": 4.588,
+      "duration": 2.988
     },
     {
-      "start": 15.186,
-      "end": 15.455,
-      "duration": 0.26900000000000013,
-      "cut_type": "mixed",
-      "label": "Cut 0.3s"
+      "start": 8.742,
+      "end": 9.524,
+      "duration": 0.782
     },
     {
-      "start": 16.741,
+      "start": 12.153,
+      "end": 12.775,
+      "duration": 0.622
+    },
+    {
+      "start": 14.999,
       "end": 16.814739,
-      "duration": 0.07373899999999978,
-      "cut_type": "silence",
-      "label": "Silence 0.1s"
+      "duration": 1.816
     }
   ],
   "summary": {
-    "total_cuts": 6,
-    "silence_count": 2,
-    "filler_count": 0,
-    "total_cut_duration": 4.346739000000001
+    "original_duration": 16.815,
+    "final_duration": 6.208,
+    "cut_duration": 10.607,
+    "cut_percentage": 63.1,
+    "fillers_cut": 1,
+    "silences_cut": 3,
+    "gaps_cut": 0
   }
 }
