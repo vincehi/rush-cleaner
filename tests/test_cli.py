@@ -2,12 +2,17 @@
 
 from unittest.mock import MagicMock, patch
 
+import typer
 from typer.testing import CliRunner
 
 from derush import __version__
-from derush.cli import app
+from derush.cli import main
 
 runner = CliRunner()
+
+# Create a Typer app for testing (use _cli prefix to avoid pytest collection warning)
+_cli_app = typer.Typer()
+_cli_app.command()(main)
 
 
 class TestCLI:
@@ -15,7 +20,7 @@ class TestCLI:
 
     def test_help_displays_options(self):
         """Test that --help displays all options."""
-        result = runner.invoke(app, ["main", "--help"])
+        result = runner.invoke(_cli_app, ["--help"])
 
         assert result.exit_code == 0
         assert "--format" in result.stdout
@@ -26,9 +31,12 @@ class TestCLI:
         assert "--model" in result.stdout
         assert "--version" in result.stdout
 
-    def test_version_displays_version(self):
+    def test_version_displays_version(self, tmp_path):
         """Test that --version displays version."""
-        result = runner.invoke(app, ["main", "--version"])
+        # Create a dummy file since input_file is required
+        test_file = tmp_path / "dummy.mp4"
+        test_file.touch()
+        result = runner.invoke(_cli_app, [str(test_file), "--version"])
 
         assert result.exit_code == 0
         assert __version__ in result.stdout
@@ -37,7 +45,7 @@ class TestCLI:
         """Test error when input file doesn't exist."""
         non_existent = tmp_path / "nonexistent.mp4"
 
-        result = runner.invoke(app, ["main", str(non_existent)])
+        result = runner.invoke(_cli_app, [str(non_existent)])
 
         assert result.exit_code != 0
 
@@ -50,7 +58,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file), "--format", "invalid"])
+            result = runner.invoke(_cli_app, [str(test_file), "--format", "invalid"])
 
         assert result.exit_code != 0
         assert "Invalid format" in (result.stdout + result.stderr)
@@ -66,7 +74,7 @@ class TestCLI:
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
             result = runner.invoke(
-                app, ["main", str(test_file), "--format", "fcpxml", "-o", str(output_file)]
+                _cli_app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)]
             )
 
         assert output_file.exists()
@@ -82,7 +90,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file), "--output", str(output_file)])
+            result = runner.invoke(_cli_app, [str(test_file), "--output", str(output_file)])
 
         assert output_file.exists()
 
@@ -95,7 +103,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file)])
+            result = runner.invoke(_cli_app, [str(test_file)])
 
         assert result.exit_code == 0
         assert (tmp_path / "my_video.fcpxml").exists()
@@ -110,7 +118,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file), "--fps", "30"])
+            result = runner.invoke(_cli_app, [str(test_file), "--fps", "30"])
 
         # Should show the overridden FPS
         assert "30" in result.stdout
@@ -128,7 +136,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file)])
+            result = runner.invoke(_cli_app, [str(test_file)])
 
         assert result.exit_code != 0
         assert "Transcription failed" in (result.stdout + result.stderr)
@@ -172,6 +180,6 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, ["main", str(test_file)])
+            result = runner.invoke(_cli_app, [str(test_file)])
 
         assert "Summary" in result.stdout

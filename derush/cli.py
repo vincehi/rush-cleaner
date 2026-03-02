@@ -30,20 +30,6 @@ def setup_logging(verbose: bool = False) -> None:
     )
 
 
-def version_callback(value: bool) -> None:
-    """Callback to display version and exit."""
-    if value:
-        typer.echo(f"derush version {__version__}")
-        raise typer.Exit()
-
-
-app = typer.Typer(
-    name="derush",
-    help="Video derushing tool - automatically detect silences and filler words for video editing",
-)
-
-
-@app.command()
 def main(
     input_file: Path = typer.Argument(
         ..., exists=True, help="Input video or audio file (mp4, mov, mkv, wav, mp3)"
@@ -102,17 +88,21 @@ def main(
         False,
         "--version",
         "-V",
-        callback=version_callback,
         is_eager=True,
         help="Show version and exit",
     ),
-):
+) -> None:
     """
     Analyze a video/audio file and generate cuts for silences and filler words.
 
     The output can be imported into video editing software like DaVinci Resolve,
     Final Cut Pro, or Premiere Pro.
     """
+    # Handle version flag
+    if version:
+        typer.echo(f"derush version {__version__}")
+        raise typer.Exit()
+
     # Setup logging
     setup_logging(verbose)
 
@@ -302,27 +292,9 @@ def main(
     typer.echo(f"\nOutput saved to: {output}")
 
 
-@app.command()
-def ui(
-    share: bool = typer.Option(
-        False, "--share", help="Create a public Gradio link (ngrok)"
-    ),
-    port: int | None = typer.Option(
-        None, "--port", "-p", help="Port for the local server (default: 7860)"
-    ),
-):
-    """
-    Launch the web UI (Gradio). Requires: pip install derush[ui]
-    """
-    try:
-        from derush.gradio_app import launch_ui
-    except ImportError as e:
-        typer.echo(
-            "Gradio is not installed. Install with: pip install derush[ui]",
-            err=True,
-        )
-        raise typer.Exit(1) from e
-    launch_ui(share=share, server_port=port)
+def app() -> None:
+    """Entry point for the CLI."""
+    typer.run(main)
 
 
 if __name__ == "__main__":

@@ -46,9 +46,6 @@ dev = [
 export = [
     "lxml>=4.9.0",
 ]
-ui = [
-    "gradio>=4.0",
-]
 
 [project.urls]
 Homepage = "https://github.com/vincehi/rush-cleaner"

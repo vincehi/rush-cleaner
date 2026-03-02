@@ -1,150 +1,95 @@
 # Derush
 
-Automatic video derushing tool - Detect silences and filler words to speed up your editing workflow.
-
-## Installation
-
-One command (installs [uv](https://docs.astral.sh/uv/) then derush — no Python needed):
-
-**macOS / Linux:**
-```bash
-curl -LsSf https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.sh | sh
-```
-
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.ps1 | iex
-```
-
-Then: install **FFmpeg** (required to read videos) — `brew install ffmpeg` (macOS), `apt install ffmpeg` (Linux), `winget install FFmpeg` (Windows).
-If `derush` is not found: add it to PATH (`$HOME/.local/bin` on macOS/Linux; restart terminal on Windows).
-
-## Uninstall
-
-```bash
-uv tool uninstall derush
-```
-(uv must be in PATH.)
+Automatically detect silences and filler words in your videos. Export to DaVinci Resolve or Final Cut Pro for fast editing.
 
 ## Quick Start
 
+**1. Install**
+```bash
+# macOS / Linux
+curl -LsSf https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.ps1 | iex
+```
+
+Install **FFmpeg** (required): `brew install ffmpeg` (macOS), `apt install ffmpeg` (Linux), `winget install FFmpeg` (Windows).
+
+**2. Run**
 ```bash
 derush my_video.mp4
 ```
 
-The generated file (FCPXML by default) is created **next to the video** (same folder, same name with `.fcpxml` extension). Import it into DaVinci Resolve, FCP or Premiere. Dev details and commands: **[PYTHON.md](PYTHON.md)**.
+**3. Import**
+- **DaVinci Resolve**: File > Import > Timeline > Select `.fcpxml`
+- **Final Cut Pro**: File > Import > XML > Select `.fcpxml`
 
-## Requirements
+**4. Edit** - Delete the detected segments on your timeline
 
-- **FFmpeg** (required, install separately). No Python required.
+That's it! Your video is ready to edit.
 
-## Troubleshooting
+---
 
-**torchcodec / Pyannote warning**: At startup, you may see a long warning like "torchcodec is not installed correctly so built-in audio decoding will fail". It comes from Pyannote (voice detection used by WhisperX). Audio is actually loaded via FFmpeg, so the software works; the message just indicates an environment issue.
-
-To remove the warning (recommended):
-- **Option A**: Align PyTorch / TorchCodec / FFmpeg versions using the [TorchCodec compatibility table](https://github.com/pytorch/torchcodec?tab=readme-ov-file#installing-torchcodec), or install a compatible FFmpeg version (e.g. `brew install ffmpeg` and verify libs are found).
-- **Option B**: Use Silero VAD: `derush video.mp4 --vad silero` (or `vad_method="silero"` via Python API).
-
-## Web Interface (GUI)
-
-For a graphical interface in your browser (file upload, settings, Run button):
+## Common Options
 
 ```bash
-pip install derush[ui]   # once
-derush ui
-```
-
-Opens a local page (default http://127.0.0.1:7860). Use `--share` for a temporary public link, `--port 8080` to change port.
-
-## Usage (CLI)
-
-```bash
-# Basic analysis (FCPXML format by default)
-derush video.mp4
-
-# Specify language
+# French video
 derush video.mp4 --lang fr
 
-# Minimum silence duration (seconds)
-derush video.mp4 --min-silence 0.3
-
-# Padding around cuts (seconds) to soften transitions
+# Softer cuts (keep 0.1s padding on each side)
 derush video.mp4 --cut-padding 0.1
 
-# Add custom filler words
-derush video.mp4 --fillers "like,you know,I mean"
+# Detect shorter silences (0.3s instead of 0.5s)
+derush video.mp4 --min-silence 0.3
 
-# Use GPU (CUDA)
-derush video.mp4 --device cuda
-
-# More accurate Whisper model (slower)
-derush video.mp4 --model large
-
-# Preview without generating file (dry-run)
+# Preview without generating file
 derush video.mp4 --preview
 
-# Detailed logs (cut decisions)
-derush video.mp4 --verbose
+# Add custom filler words
+derush video.mp4 --fillers "like,you know"
 ```
 
-## Options
+## All Options
 
 | Option | Description | Default |
 |--------|-------------|--------|
-| `--output`, `-o` | Output file | Next to video (same name, .fcpxml or .json) |
-| `--format`, `-f` | Output format (`fcpxml`, `json`) | `fcpxml` |
-| `--lang`, `-l` | Language (`fr`, `en`). Auto-detected from transcription if not specified | auto |
-| `--min-silence` | Min. silence duration to cut (seconds) | `0.5` |
-| `--min-gap` | Min. gap between words to cut (seconds) | `0.3` |
-| `--cut-padding` | Seconds to keep on each side of cuts (softens transitions; cuts too short are left unchanged) | `0` |
-| `--fillers` | Custom filler words (comma-separated) | per-language list |
-| `--preview` | Show summary without generating file | - |
-| `--verbose`, `-v` | Show cut decisions (words, segments) | - |
-| `--fps` | Force FPS | auto (or 25) |
-| `--model`, `-m` | Whisper model (`tiny`, `base`, `small`, `medium`, `large`) | `base` |
-| `--vad` | VAD backend: `pyannote` or `silero` (silero avoids torchcodec warning) | `pyannote` |
-| `--chunk-size` | Max VAD segment size (seconds); smaller = more segments | `15` |
-| `--device` | Device (`cpu`, `cuda`) | `cpu` |
-| `--version`, `-V` | Show version and exit | - |
+| `--output`, `-o` | Output file path | Next to video |
+| `--format`, `-f` | `fcpxml` or `json` | `fcpxml` |
+| `--lang`, `-l` | Language (`fr`, `en`) | auto-detected |
+| `--min-silence` | Min silence to cut (seconds) | `0.5` |
+| `--min-gap` | Min gap between words to cut | `0.3` |
+| `--cut-padding` | Padding around cuts (seconds) | `0` |
+| `--fillers` | Custom filler words | built-in list |
+| `--preview` | Show summary, no file | - |
+| `--verbose`, `-v` | Show detailed cuts | - |
+| `--model`, `-m` | Whisper model size | `base` |
+| `--device` | `cpu` or `cuda` | `cpu` |
+| `--version`, `-V` | Show version | - |
 
-## Output Formats
+## Filler Words Detected
 
-### FCPXML 1.9
-Compatible with DaVinci Resolve, Final Cut Pro. Rich metadata with silence/filler types.
+**French**: euh, ben, bah, hmm, bon ben
 
-### JSON
-For debugging or custom integrations.
+**English**: um, uh, hmm
 
-## Workflow
+Add more with `--fillers "word1,word2"`.
 
-1. Record your raw video
-2. Run `derush video.mp4`
-3. Import the generated file into your editing software
-4. Delete detected segments on your timeline
+## FAQ
 
-## Filler Words (default)
+**Q: I see a warning about "torchcodec" at startup**
 
-List defined in `derush.config.DEFAULT_FILLERS` by language:
+It's harmless. Audio works fine via FFmpeg. To hide it, use `--vad silero`.
 
-**French** (`--lang fr`): euh, ben, bah, hmm, bon ben (and variants)
+**Q: Premiere Pro?**
 
-**English** (`--lang en` or unspecified): um, uh, hmm (and variants)
+Premiere doesn't support FCPXML natively. Use [XtoCC](https://stupidpsoftware.com/xtocc/) to convert, or export as JSON.
 
-To add more (e.g. "you know", "like"): `--fillers "you know,like"`.
-
-## Tests
+**Q: How to uninstall?**
 
 ```bash
-make test
-# or with coverage
-./venv/bin/pytest tests/ -v --cov=derush --cov-report=html
+uv tool uninstall derush
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
-
----
-
-Built for content creators who want to spend less time derushing.
+MIT License
