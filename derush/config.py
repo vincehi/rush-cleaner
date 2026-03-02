@@ -27,6 +27,11 @@ class CutterConfig:
     # Words with score below this threshold may have their timestamps adjusted
     min_word_score: float = 0.5
 
+    # Padding (seconds) to leave at each side of a cut.
+    # Reduces the cut by this amount on both sides so transitions are less abrupt.
+    # E.g. 0.1 = keep 0.1s before and 0.1s after each cut boundary.
+    cut_padding: float = 0.0
+
 
 # Default filler words by language
 # Only include true hesitation sounds/words that should always be cut

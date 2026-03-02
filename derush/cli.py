@@ -71,6 +71,11 @@ def main(
         "--min-gap",
         help="Minimum gap between words to cut (smaller gaps are kept for natural flow)",
     ),
+    cut_padding: float = typer.Option(
+        0.0,
+        "--cut-padding",
+        help="Seconds to keep at each side of cuts for smoother transitions (0-1s; cuts too short are left unchanged)",
+    ),
     fillers: str | None = typer.Option(
         None, "--fillers", help="Custom filler words (comma-separated)"
     ),
@@ -143,6 +148,11 @@ def main(
         typer.echo(error_msg, err=True)
         logger.error(error_msg)
         raise typer.Exit(1)
+    if cut_padding < 0 or cut_padding > 1:
+        error_msg = f"cut-padding must be >= 0 and <= 1 second (got {cut_padding})"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
+        raise typer.Exit(1)
 
     # Get media info
     typer.echo(f"Analyzing media file: {input_file}")
@@ -201,6 +211,7 @@ def main(
         min_silence=min_silence,
         min_gap_cut=min_gap,
         gap_after_filler=True,
+        cut_padding=cut_padding,
     )
 
     # Language for fillers: user-specified or fallback to English
@@ -245,6 +256,16 @@ def main(
     typer.echo(f"  Final duration: {result.final_duration:.1f}s")
     typer.echo(f"  Cut duration: {result.cut_duration:.1f}s ({result.cut_percentage:.1f}%)")
 
+    # Padding stats (if applicable)
+    if result.padding_stats and cut_padding > 0:
+        stats = result.padding_stats
+        typer.echo(f"\n  Padding ({cut_padding}s per side):")
+        typer.echo(f"    {stats.padded_count} cuts softened")
+        if stats.unchanged_count > 0:
+            typer.echo(f"    {stats.unchanged_count} cuts too short, left unchanged")
+        if stats.duration_regained > 0:
+            typer.echo(f"    {stats.duration_regained:.2f}s regained for smoother transitions")
+
     # Preview mode: stop here
     if preview:
         typer.echo("\n[Preview mode - no files generated]")
@@ -271,6 +292,29 @@ def main(
         raise typer.Exit(1) from e
 
     typer.echo(f"\nOutput saved to: {output}")
+
+
+@app.command()
+def ui(
+    share: bool = typer.Option(
+        False, "--share", help="Create a public Gradio link (ngrok)"
+    ),
+    port: int | None = typer.Option(
+        None, "--port", "-p", help="Port for the local server (default: 7860)"
+    ),
+):
+    """
+    Launch the web UI (Gradio). Requires: pip install derush[ui]
+    """
+    try:
+        from derush.gradio_app import launch_ui
+    except ImportError as e:
+        typer.echo(
+            "Gradio is not installed. Install with: pip install derush[ui]",
+            err=True,
+        )
+        raise typer.Exit(1) from e
+    launch_ui(share=share, server_port=port)
 
 
 if __name__ == "__main__":

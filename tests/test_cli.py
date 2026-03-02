@@ -15,19 +15,20 @@ class TestCLI:
 
     def test_help_displays_options(self):
         """Test that --help displays all options."""
-        result = runner.invoke(app, ["--help"])
+        result = runner.invoke(app, ["main", "--help"])
 
         assert result.exit_code == 0
         assert "--format" in result.stdout
         assert "--lang" in result.stdout
         assert "--min-silence" in result.stdout
+        assert "--cut-padding" in result.stdout
         assert "--fps" in result.stdout
         assert "--model" in result.stdout
         assert "--version" in result.stdout
 
     def test_version_displays_version(self):
         """Test that --version displays version."""
-        result = runner.invoke(app, ["--version"])
+        result = runner.invoke(app, ["main", "--version"])
 
         assert result.exit_code == 0
         assert __version__ in result.stdout
@@ -36,7 +37,7 @@ class TestCLI:
         """Test error when input file doesn't exist."""
         non_existent = tmp_path / "nonexistent.mp4"
 
-        result = runner.invoke(app, [str(non_existent)])
+        result = runner.invoke(app, ["main", str(non_existent)])
 
         assert result.exit_code != 0
 
@@ -49,7 +50,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file), "--format", "invalid"])
+            result = runner.invoke(app, ["main", str(test_file), "--format", "invalid"])
 
         assert result.exit_code != 0
         assert "Invalid format" in (result.stdout + result.stderr)
@@ -65,7 +66,7 @@ class TestCLI:
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
             result = runner.invoke(
-                app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)]
+                app, ["main", str(test_file), "--format", "fcpxml", "-o", str(output_file)]
             )
 
         assert output_file.exists()
@@ -81,7 +82,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file), "--output", str(output_file)])
+            result = runner.invoke(app, ["main", str(test_file), "--output", str(output_file)])
 
         assert output_file.exists()
 
@@ -94,7 +95,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file)])
+            result = runner.invoke(app, ["main", str(test_file)])
 
         assert result.exit_code == 0
         assert (tmp_path / "my_video.fcpxml").exists()
@@ -109,7 +110,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file), "--fps", "30"])
+            result = runner.invoke(app, ["main", str(test_file), "--fps", "30"])
 
         # Should show the overridden FPS
         assert "30" in result.stdout
@@ -127,7 +128,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file)])
+            result = runner.invoke(app, ["main", str(test_file)])
 
         assert result.exit_code != 0
         assert "Transcription failed" in (result.stdout + result.stderr)
@@ -171,6 +172,6 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(app, [str(test_file)])
+            result = runner.invoke(app, ["main", str(test_file)])
 
         assert "Summary" in result.stdout

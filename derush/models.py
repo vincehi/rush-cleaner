@@ -82,6 +82,20 @@ class KeepSegment:
 
 
 @dataclass
+class PaddingStats:
+    """Statistics about padding applied to cuts."""
+
+    # Number of cuts that were successfully padded
+    padded_count: int = 0
+
+    # Number of cuts too short to be padded (left unchanged)
+    unchanged_count: int = 0
+
+    # Duration recovered by padding (time added back to keep segments)
+    duration_regained: float = 0.0
+
+
+@dataclass
 class CutterResult:
     """Result of the cutting pipeline."""
 
@@ -96,6 +110,9 @@ class CutterResult:
     original_duration: float
     final_duration: float
     cut_duration: float
+
+    # Padding statistics
+    padding_stats: PaddingStats | None = None
 
     @property
     def cut_percentage(self) -> float:

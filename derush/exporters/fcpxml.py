@@ -13,7 +13,7 @@ from derush.models import CutterResult, MediaInfo
 logger = logging.getLogger(__name__)
 
 # Defaults for timeline naming and audio (overridable for different NLE / locales)
-DEFAULT_EVENT_NAME = "Dérushage Auto"
+DEFAULT_EVENT_NAME = "Auto Derush"
 DEFAULT_PROJECT_NAME = "Cuts"
 DEFAULT_AUDIO_RATE = 48000
 

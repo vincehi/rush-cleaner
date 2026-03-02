@@ -18,6 +18,7 @@ from derush.models import (
     CutterResult,
     CutType,
     KeepSegment,
+    PaddingStats,
     Word,
     WordStatus,
     merge_adjacent_cuts,
@@ -306,6 +307,84 @@ def compute_cuts(words: list[Word], config: CutterConfig, total_duration: float)
     return cuts
 
 
+def apply_cut_padding(
+    cuts: list[Cut], padding: float, total_duration: float
+) -> tuple[list[Cut], PaddingStats]:
+    """
+    Shrink each cut by a padding on both sides (keep a small buffer at cut boundaries).
+
+    This leaves a short amount of time at the start/end of each cut in the
+    "keep" segments, so transitions are less abrupt.
+
+    Behavior:
+    - Cuts long enough (duration > 2*padding + MIN_PADDING_REMAINING) are shrunk normally
+    - Cuts too short are LEFT UNCHANGED (predictable behavior for user)
+    - Edge silences (start/end of media) are never padded
+
+    Args:
+        cuts: List of cuts (sorted, non-overlapping)
+        padding: Seconds to remove from each side of every cut (0 = no change)
+        total_duration: Total media duration for clamping
+
+    Returns:
+        Tuple of (padded cuts, padding statistics)
+    """
+    stats = PaddingStats()
+
+    if padding <= 0 or not cuts:
+        return cuts, stats
+
+    # Minimum remaining duration after padding (50ms)
+    MIN_PADDING_REMAINING = 0.05
+    # Minimum cut duration to be eligible for padding
+    MIN_CUT_FOR_PADDING = 2 * padding + MIN_PADDING_REMAINING
+
+    result: list[Cut] = []
+
+    for cut in cuts:
+        original_duration = cut.end - cut.start
+
+        # Edge silences are never padded (would reintroduce content at edges)
+        is_edge_silence = cut.reason in (
+            CutReason.GAP_BEFORE_SPEECH,
+            CutReason.GAP_AFTER_SPEECH,
+        )
+
+        if is_edge_silence:
+            # Edge silences stay unchanged, don't count in stats
+            result.append(cut)
+            continue
+
+        # Check if cut is long enough to be padded
+        if original_duration < MIN_CUT_FOR_PADDING:
+            # Too short - leave unchanged
+            result.append(cut)
+            stats.unchanged_count += 1
+            continue
+
+        # Apply padding normally
+        new_start = cut.start + padding
+        new_end = cut.end - padding
+
+        # Safety clamping (should not happen with proper input)
+        new_start = max(0.0, min(new_start, total_duration))
+        new_end = max(new_start + MIN_PADDING_REMAINING, min(new_end, total_duration))
+
+        result.append(
+            Cut(
+                start=new_start,
+                end=new_end,
+                cut_type=cut.cut_type,
+                reason=cut.reason,
+                word=cut.word,
+            )
+        )
+        stats.padded_count += 1
+        stats.duration_regained += 2 * padding
+
+    return result, stats
+
+
 def compute_keep_segments(cuts: list[Cut], total_duration: float) -> list[KeepSegment]:
     """
     Compute segments to keep from cuts (complement of cuts).
@@ -401,10 +480,13 @@ def run_pipeline(
     # Step 2: Compute cuts
     cuts = compute_cuts(words, config, total_duration)
 
-    # Step 3: Compute keep segments
+    # Step 2b: Apply padding so a small buffer is kept at each cut boundary
+    cuts, padding_stats = apply_cut_padding(cuts, config.cut_padding, total_duration)
+
+    # Step 3: Compute keep segments (from padded cuts)
     keep_segments = compute_keep_segments(cuts, total_duration)
 
-    # Compute summary stats
+    # Compute summary stats (from final cuts after padding)
     total_words = len(words)
     filler_words = sum(1 for w in words if w.status == WordStatus.FILLER)
     kept_words = total_words - filler_words
@@ -422,4 +504,5 @@ def run_pipeline(
         original_duration=total_duration,
         final_duration=final_duration,
         cut_duration=cut_duration,
+        padding_stats=padding_stats if config.cut_padding > 0 else None,
     )

@@ -6,12 +6,13 @@ from derush.config import CutterConfig
 from derush.cutter import (
     _build_filler_patterns,
     _normalize_word,
+    apply_cut_padding,
     classify_words,
     compute_cuts,
     compute_keep_segments,
     is_filler,
 )
-from derush.models import CutReason, CutType, Word, WordStatus
+from derush.models import Cut, CutReason, CutType, PaddingStats, Word, WordStatus
 
 
 class TestNormalizeWord:
@@ -326,6 +327,84 @@ class TestComputeKeepSegments:
         assert len(keep_segments) == 1
         assert keep_segments[0].start == 0.0
         assert keep_segments[0].end == 3.0
+
+
+class TestApplyCutPadding:
+    """Tests for apply_cut_padding function."""
+
+    def test_padding_shrinks_cuts(self):
+        """Padding reduces each cut by the same amount on both sides."""
+        cuts = [
+            Cut(start=1.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+        ]
+        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=10.0)
+        assert len(padded) == 1
+        assert padded[0].start == 1.2
+        assert padded[0].end == 2.8
+        assert stats.padded_count == 1
+        assert stats.unchanged_count == 0
+        assert stats.duration_regained == 0.4  # 2 * 0.2
+
+    def test_padding_zero_returns_unchanged(self):
+        """Zero padding leaves cuts unchanged."""
+        cuts = [
+            Cut(start=1.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+        ]
+        padded, stats = apply_cut_padding(cuts, padding=0.0, total_duration=5.0)
+        assert padded == cuts
+        assert stats.padded_count == 0
+
+    def test_short_cut_remains_unchanged_with_large_padding(self):
+        """A cut too short for padding is left unchanged (not dropped)."""
+        cuts = [
+            Cut(start=1.0, end=1.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+        ]
+        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=5.0)
+        assert len(padded) == 1
+        assert padded[0].start == 1.0  # Unchanged
+        assert padded[0].end == 1.3  # Unchanged
+        assert stats.padded_count == 0
+        assert stats.unchanged_count == 1
+
+    def test_edge_silence_not_padded(self):
+        """Padding is not applied to leading/trailing silences."""
+        cuts = [
+            Cut(start=0.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
+        ]
+        padded, stats = apply_cut_padding(cuts, padding=0.5, total_duration=5.0)
+        assert len(padded) == 1
+        assert padded[0].start == 0.0
+        assert padded[0].end == 2.0
+        # Edge silences don't count in stats
+        assert stats.padded_count == 0
+        assert stats.unchanged_count == 0
+
+    def test_mixed_cuts_selective_padding(self):
+        """Only cuts long enough are padded; others are unchanged."""
+        cuts = [
+            # Long enough: 2.0s > 2*0.2 + 0.05 = 0.45s
+            Cut(start=0.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+            # Too short: 0.3s < 0.45s
+            Cut(start=3.0, end=3.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+            # Edge silence: not padded
+            Cut(start=5.0, end=7.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_AFTER_SPEECH),
+        ]
+        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=10.0)
+
+        assert len(padded) == 3
+        # First cut: padded
+        assert padded[0].start == 0.2
+        assert padded[0].end == 1.8
+        # Second cut: unchanged
+        assert padded[1].start == 3.0
+        assert padded[1].end == 3.3
+        # Third cut: unchanged (edge silence)
+        assert padded[2].start == 5.0
+        assert padded[2].end == 7.0
+
+        assert stats.padded_count == 1
+        assert stats.unchanged_count == 1
+        assert stats.duration_regained == 0.4
 
 
 class TestRunPipelineValidation:

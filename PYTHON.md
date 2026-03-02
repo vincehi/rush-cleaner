@@ -1,25 +1,25 @@
-# Python dans ce projet
+# Python Development Guide
 
-Référence pour l’environnement et les commandes (dev, tests, lint). Package : `derush/` (pas `src/`).
+Reference for environment setup and commands (dev, tests, lint). Package: `derush/` (not `src/`).
 
-## Mise en place (une fois)
+## Setup (once)
 
-Python 3.10–3.14. À la racine du projet :
+Python 3.10–3.14. From project root:
 
 ```bash
 python3 -m venv venv
 ./venv/bin/pip install -e ".[dev,lint]"
 ```
 
-Pour l’export FCPXML en local, ajouter l’extra `export` : `".[dev,lint,export]"`.
+For local FCPXML export, add the `export` extra: `".[dev,lint,export]"`.
 
-## Commandes
+## Commands
 
-| Action   | Commande |
-|----------|----------|
-| Tests    | `make test` ou `./venv/bin/pytest tests/ -v` |
-| Lint     | `make lint` ou `./venv/bin/ruff check derush/ tests/` |
-| Format   | `make format` ou `./venv/bin/ruff format derush/ tests/` |
-| App      | `./venv/bin/derush --help` (ou `derush` si venv activé) |
+| Action   | Command |
+|----------|---------|
+| Tests    | `make test` or `./venv/bin/pytest tests/ -v` |
+| Lint     | `make lint` or `./venv/bin/ruff check derush/ tests/` |
+| Format   | `make format` or `./venv/bin/ruff format derush/ tests/` |
+| App      | `./venv/bin/derush --help` (or `derush` with venv activated) |
 
-Toujours exécuter depuis la racine du dépôt. Ne pas supposer que `python`, `pytest` ou `ruff` sont dans le PATH (utiliser `make` ou `./venv/bin/...`). Si le venv n’existe pas : `make install` ou les commandes ci‑dessus.
+Always run from repository root. Don't assume `python`, `pytest` or `ruff` are in PATH (use `make` or `./venv/bin/...`). If venv doesn't exist: `make install` or commands above.
