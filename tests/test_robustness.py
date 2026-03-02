@@ -7,6 +7,7 @@ These tests verify that:
 4. Empty inputs are handled gracefully
 """
 
+import pytest
 
 from derush.config import CutterConfig
 from derush.cutter import (
@@ -117,11 +118,11 @@ class TestAbnormallyLongWords:
             Word(word="test", start=0.0, end=10.0, score=0.9),
         ]
 
-        config = CutterConfig(max_word_duration=2.0)
+        config = CutterConfig()
         corrected = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
-        assert duration < 1.0, f"Word should be corrected to <1s, got {duration}s"
+        assert duration < 0.5, f"Word should be corrected to <0.5s, got {duration}s"
 
     def test_30_second_word_is_corrected(self):
         """Even a 30-second word should be corrected."""
@@ -129,11 +130,11 @@ class TestAbnormallyLongWords:
             Word(word="bonjour", start=0.0, end=30.0, score=0.8),
         ]
 
-        config = CutterConfig(max_word_duration=2.0)
+        config = CutterConfig()
         corrected = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
-        assert duration < 2.0
+        assert duration < 1.0
 
     def test_long_word_exposes_hidden_gap(self):
         """Correcting a long word should expose hidden gaps."""
@@ -144,7 +145,7 @@ class TestAbnormallyLongWords:
             Word(word="suite", start=8.0, end=8.5, score=0.9),
         ]
 
-        config = CutterConfig(max_word_duration=2.0)
+        config = CutterConfig()
         corrected = correct_word_timestamps(words, config)
 
         # After correction, "test" should be much shorter
@@ -318,19 +319,18 @@ class TestUnusualInputs:
             assert covered, f"Filler '{word.word}' should be covered by a cut"
 
     def test_very_low_scores(self):
-        """Words with very low scores should be handled."""
+        """Words with very low scores but normal duration should not be corrected."""
         words = [
-            Word(word="unclear", start=0.0, end=5.0, score=0.1),  # Very low score
-            Word(word="also", start=5.0, end=10.0, score=0.05),  # Even lower
+            Word(word="unclear", start=0.0, end=0.5, score=0.1),  # Very low score, normal duration
+            Word(word="also", start=0.5, end=0.9, score=0.05),  # Even lower score, normal duration
         ]
 
-        config = CutterConfig(min_word_score=0.5)
+        config = CutterConfig()
         corrected = correct_word_timestamps(words, config)
 
-        # Should be corrected due to low scores
-        for word in corrected:
-            duration = word.end - word.start
-            assert duration < 2.0, f"Low-score word should be corrected: {duration}s"
+        # Words with normal duration should not be corrected, regardless of score
+        assert corrected[0].end - corrected[0].start == pytest.approx(0.5, abs=0.01)
+        assert corrected[1].end - corrected[1].start == pytest.approx(0.4, abs=0.01)
 
     def test_special_characters_in_words(self):
         """Words with special characters should be handled."""
