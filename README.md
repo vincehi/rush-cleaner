@@ -4,7 +4,7 @@ Automatically detect silences and filler words in your videos. Export to DaVinci
 
 ## Quick Start
 
-**1. Install**
+**1. Install / update**
 ```bash
 # macOS / Linux
 curl -LsSf https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.sh | sh
