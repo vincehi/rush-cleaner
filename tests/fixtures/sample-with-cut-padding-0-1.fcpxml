@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+  <resources>
+    <format id="r1" name="FFVideoFormat1620x1080" frameDuration="1671/47300s" width="1620" height="1080"/>
+    <asset id="r2" name="sample.mov" format="r1" hasVideo="1" hasAudio="1" audioSources="1" audioChannels="1" audioRate="44100" start="0s" duration="790383/47300s">
+      <media-rep src="file:///Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov" kind="original-media"/>
+    </asset>
+  </resources>
+  <library>
+    <event name="Dérushage Auto">
+      <project name="Cuts">
+        <sequence format="r1" duration="325845/47300s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="44100">
+          <spine>
+            <asset-clip ref="r2" name="Keep 1" offset="0/47300s" duration="5013/47300s" start="0/47300s" format="r1" tcFormat="NDF" audioRole="dialogue" enabled="1">
+              <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+            </asset-clip>
+            <asset-clip ref="r2" name="Keep 2" offset="5013/47300s" duration="150390/47300s" start="70182/47300s" format="r1" tcFormat="NDF" audioRole="dialogue" enabled="1">
+              <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+            </asset-clip>
+            <asset-clip ref="r2" name="Keep 3" offset="155403/47300s" duration="46788/47300s" start="409395/47300s" format="r1" tcFormat="NDF" audioRole="dialogue" enabled="1">
+              <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+            </asset-clip>
+            <asset-clip ref="r2" name="Keep 4" offset="202191/47300s" duration="38433/47300s" start="569811/47300s" format="r1" tcFormat="NDF" audioRole="dialogue" enabled="1">
+              <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+            </asset-clip>
+            <asset-clip ref="r2" name="Keep 5" offset="240624/47300s" duration="85221/47300s" start="705162/47300s" format="r1" tcFormat="NDF" audioRole="dialogue" enabled="1">
+              <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+            </asset-clip>
+          </spine>
+        </sequence>
+      </project>
+    </event>
+  </library>
+</fcpxml>
