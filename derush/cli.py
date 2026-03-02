@@ -57,7 +57,7 @@ def main(
         help="Output file path (default: same as input with appropriate extension)"
     ),
     output_format: str = typer.Option(
-        "json",
+        "fcpxml",
         "--format", "-f",
         help="Output format: fcpxml or json"
     ),
@@ -104,7 +104,7 @@ def main(
     vad: str = typer.Option(
         "pyannote",
         "--vad",
-        help="VAD backend: pyannote (default) or silero (avoids torchcodec warning if Pyannote fails to load)"
+        help="VAD backend (same as WhisperX): pyannote or silero"
     ),
     verbose: bool = typer.Option(
         False,
@@ -141,7 +141,7 @@ def main(
         logger.error(error_msg)
         raise typer.Exit(1)
     if vad not in ("pyannote", "silero"):
-        typer.echo(f"Invalid --vad '{vad}'. Use: pyannote or silero.", err=True)
+        typer.echo(f"Invalid vad_method: {vad}", err=True)
         raise typer.Exit(1)
 
     # Get media info

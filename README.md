@@ -2,19 +2,34 @@
 
 Outil de dérushage vidéo automatique - Detectez les silences et filler words pour accelerer votre montage.
 
+## Installation
+
+Une commande (installe [uv](https://docs.astral.sh/uv/) puis derush — pas besoin de Python) :
+
+**macOS / Linux :**
+```bash
+curl -LsSf https://raw.githubusercontent.com/vincentsourice/derush/main/install.sh | sh
+```
+
+**Windows (PowerShell) :**
+```powershell
+irm https://raw.githubusercontent.com/vincentsourice/derush/main/install.ps1 | iex
+```
+
+Ensuite : installer **FFmpeg** (requis pour lire les vidéos) — `brew install ffmpeg` (macOS), `apt install ffmpeg` (Linux), `winget install FFmpeg` (Windows).  
+Si `derush` n'est pas trouvé : ajouter au PATH (`$HOME/.local/bin` sur macOS/Linux ; redémarrer le terminal sur Windows).
+
 ## Quick Start
 
 ```bash
-git clone https://github.com/vincentsourice/derush.git && cd derush
-make install
-./venv/bin/derush ma_video.mp4
+derush ma_video.mp4
 ```
 
 Le fichier généré (FCPXML par défaut) s’importe dans DaVinci Resolve, FCP ou Premiere. Détail env. et commandes dev : **[PYTHON.md](PYTHON.md)**.
 
 ## Prérequis
 
-- Python 3.10–3.14, FFmpeg (`brew install ffmpeg` / `apt install ffmpeg`)
+- **FFmpeg** (obligatoire, à installer à part). Aucun Python requis.
 
 ## Dépannage
 
