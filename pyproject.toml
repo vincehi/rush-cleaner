@@ -27,7 +27,6 @@ classifiers = [
 dependencies = [
     "whisperx==3.8.1",
     "typer>=0.9.0,<1.0.0",
-    "lxml>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +41,9 @@ lint = [
 ]
 dev = [
     "pre-commit>=3.6.0",
+]
+export = [
+    "lxml>=4.9.0",
 ]
 
 [project.urls]
@@ -98,4 +100,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["derush"]

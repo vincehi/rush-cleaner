@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+    <resources>
+        <format width="1920" name="FFVideoFormat1080p2997" id="r0" height="1080" frameDuration="1001/30000s"/>
+        <format width="1620" name="FFVideoFormatRateUndefined" id="r1" height="1080" frameDuration="1001/30000s"/>
+        <asset format="r1" hasAudio="1" start="0/1s" audioChannels="1" duration="1001/60s" name="sample.mov" id="r2" hasVideo="1" audioSources="1">
+            <media-rep src="file:///Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov" kind="original-media"/>
+        </asset>
+        <asset format="r1" hasAudio="1" start="0/1s" audioChannels="1" duration="1001/60s" name="sample.mov" id="r3" hasVideo="1" audioSources="1">
+            <media-rep src="file:///Users/vincentsourice/Sites/perso_2026/rush-cleaner-v3/tests/fixtures/sample.mov" kind="original-media"/>
+        </asset>
+    </resources>
+    <library>
+        <event name="Timeline 1 (Resolve)">
+            <project name="Timeline 1 (Resolve)">
+                <sequence format="r0" tcFormat="NDF" duration="13013/3000s" tcStart="18018/5s">
+                    <spine>
+                        <asset-clip ref="r2" offset="18018/5s" format="r1" start="1001/600s" tcFormat="NDF" duration="2002/625s" name="sample.mov" enabled="1">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                        </asset-clip>
+                        <asset-clip ref="r3" offset="2254252/625s" format="r1" start="87087/10000s" tcFormat="NDF" duration="17017/15000s" name="sample.mov" enabled="1">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                        </asset-clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>

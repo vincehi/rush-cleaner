@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from derush.exporters.base import BaseExporter
-from derush.models import CutterResult, MediaInfo, NTSC_FPS, NTSC_FPS_TOLERANCE
+from derush.models import CutterResult, MediaInfo
 
 
 class EDLExporter(BaseExporter):
@@ -26,7 +26,7 @@ class EDLExporter(BaseExporter):
         cuts = self.sort_cuts_chronologically(result.cuts)
 
         # Determine drop-frame mode
-        is_drop_frame = abs(media_info.fps - NTSC_FPS) < NTSC_FPS_TOLERANCE
+        is_drop_frame = abs(media_info.fps - 29.97) < 0.01
         fcm_mode = "DROP FRAME" if is_drop_frame else "NON-DROP FRAME"
 
         lines = []

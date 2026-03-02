@@ -38,3 +38,23 @@ ruff check src/
 
 - **FR**: euh, ben, bah, hmm, bon ben
 - **EN**: um, uh, hmm
+
+## Export FCPXML (DaVinci Resolve / FCP)
+
+### Stéréo audio
+
+Pour que le son soit bien stéréo (deux canaux) après import dans Resolve :
+
+- **Un seul asset** par fichier source (pas deux refs r2/r4).
+- **Un seul `asset-clip`** par segment dans la spine (pas de doublon par segment).
+- Sur l’asset : **`audioSources="2"`** et **`audioChannels="1"`** (deux sources mono = L/R), pas `audioSources="1"` + `audioChannels="2"` (Resolve importe souvent ça en mono ou un seul côté).
+
+### Structure pour Resolve
+
+- Asset : enfant **`<media-rep src="..." kind="original-media"/>`** (style export DaVinci), pas uniquement l’attribut `src` sur l’asset.
+- Chaque `asset-clip` : **`enabled="1"`** et enfant **`<adjust-transform scale="1 1" anchor="0 0" position="0 0"/>`** pour le positionnement.
+- Séquence : **`audioLayout="stereo"`** et **`audioRate="48000"`**.
+
+### Si le son reste d’un seul côté après import
+
+Bug connu Resolve sur l’import FCPXML. Contournement : sélectionner les clips → Clic droit → Clip Attributes → onglet Audio → colonne Source Channel : assigner les canaux (Embedded 1, Embedded 2) au lieu de Mute.

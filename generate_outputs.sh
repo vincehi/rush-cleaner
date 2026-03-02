@@ -1,11 +1,12 @@
 #!/bin/bash
-# Generate outputs from a media file using the derush tool
+# Generate outputs from a media file using derush tool
 # Usage: ./generate_outputs.sh <input_file> [language]
 #
 # This script does everything:
 # 1. Transcribes with WhisperX
-# 2. Runs the cutting pipeline
-# 3. Exports to FCPXML, EDL, and JSON
+# 2. Runs cutting pipeline
+# 3. Exports to FCPXML, EDL, JSON
+#
 
 set -e
 
@@ -21,9 +22,9 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Derush Output Generator              ║${NC}"
-echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║     Derush Output Generator            ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 echo "Input:    $INPUT_FILE"
 echo "Language: $LANGUAGE"
@@ -40,16 +41,21 @@ mkdir -p "$OUTPUT_DIR"
 BASENAME=$(basename "$INPUT_FILE" | sed 's/\.[^.]*$//')
 WHISPERX_FILE="$OUTPUT_DIR/${BASENAME}_whisperx.json"
 
+# Clean existing outputs for this file
+echo -e "${YELLOW}Cleaning existing outputs for $BASENAME...${NC}"
+rm -f "$OUTPUT_DIR/${BASENAME}".* 2>/dev/null || true
+rm -rf "$OUTPUT_DIR/${BASENAME}" 2>/dev/null || true
+
 echo -e "${BLUE}Step 1: Transcribing with WhisperX...${NC}"
 python -c "
 import json
 import whisperx
 from pathlib import Path
 
-file_path = '$INPUT_FILE'
-language = '$LANGUAGE'
-model_size = '$MODEL_SIZE'
-output_file = Path('$WHISPERX_FILE')
+file_path = r'$INPUT_FILE'
+language = r'$LANGUAGE'
+model_size = r'$MODEL_SIZE'
+output_file = Path(r'$WHISPERX_FILE')
 device = 'cpu'
 compute_type = 'int8'
 
@@ -93,7 +99,7 @@ python -c "
 from pathlib import Path
 from derush.media_info import get_media_info
 
-media_info = get_media_info(Path('$INPUT_FILE'))
+media_info = get_media_info(Path(r'$INPUT_FILE'))
 print(f'Duration:   {media_info.duration:.2f}s')
 print(f'FPS:        {media_info.fps:.2f} ({media_info.fps_rational})')
 print(f'Resolution: {media_info.width}x{media_info.height}')
@@ -105,39 +111,38 @@ python -c "
 from pathlib import Path
 from derush.cutter import run_pipeline
 from derush.config import CutterConfig
-from derush.exporters.fcpxml import FCPXMLExporter
-from derush.exporters.edl import EDLExporter
+from derush.exporters import get_fcpxml_exporter, get_edl_exporter
 from derush.exporters.json import JSONExporter
 from derush.media_info import get_media_info
 
 config = CutterConfig()
 
 # Get media info
-media_info = get_media_info(Path('$INPUT_FILE'))
+media_info = get_media_info(Path(r'$INPUT_FILE'))
 
 # Run pipeline
 result = run_pipeline(
-    whisperx_path=Path('$WHISPERX_FILE'),
+    whisperx_path=Path(r'$WHISPERX_FILE'),
     total_duration=media_info.duration,
-    language='$LANGUAGE',
+    language=r'$LANGUAGE',
     config=config,
 )
 
 # Export all formats
-fcpxml_exporter = FCPXMLExporter()
-fcpxml_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.fcpxml'))
+fcpxml_exporter = get_fcpxml_exporter()
+fcpxml_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.fcpxml'))
 
-edl_exporter = EDLExporter()
-edl_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.edl'))
+edl_exporter = get_edl_exporter()
+edl_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.edl'))
 
 json_exporter = JSONExporter()
-json_exporter.export(result, media_info, Path('$OUTPUT_DIR/${BASENAME}.json'))
+json_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.json'))
 
 # Summary
 print()
-print('═══════════════════════════════════════════')
+print('═════════════════════════════════════════')
 print('WORDS')
-print('═══════════════════════════════════════════')
+print('═════════════════════════════════════════')
 for w in result.words:
     status = 'FILLER' if w.status.value == 'filler' else 'KEPT'
     print(f'  {w.word}: {w.start:.3f} -> {w.end:.3f} [{status}]')
@@ -145,7 +150,7 @@ for w in result.words:
 print()
 print('═══════════════════════════════════════════')
 print('CUTS')
-print('═══════════════════════════════════════════')
+print('═════════════════════════════════════════')
 for c in result.cuts:
     word_info = f' ({c.word})' if c.word else ''
     print(f'  [{c.start:.3f} -> {c.end:.3f}] {c.cut_type.value}: {c.reason.value}{word_info}')
@@ -168,9 +173,9 @@ print(f'  Words:    {result.total_words} total ({result.kept_words} kept, {resul
 "
 
 echo ""
-echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+echo -e "${GREEN}═════════════════════════════════════════${NC}"
 echo -e "${GREEN}Done!${NC}"
-echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+echo -e "${GREEN}═════════════════════════════════════════${NC}"
 echo ""
 echo "Outputs in $OUTPUT_DIR/:"
 ls -la "$OUTPUT_DIR/${BASENAME}."*

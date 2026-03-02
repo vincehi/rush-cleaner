@@ -3,7 +3,7 @@
 from derush.exporters.base import BaseExporter
 from derush.exporters.json import JSONExporter
 
-# Lazy imports for exporters that require optional dependencies
+
 def get_fcpxml_exporter():
     """Get FCPXML exporter (requires lxml)."""
     from derush.exporters.fcpxml import FCPXMLExporter
