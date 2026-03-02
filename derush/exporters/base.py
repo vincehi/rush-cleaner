@@ -1,9 +1,11 @@
 """Base exporter class for all export formats."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from derush.models import CutterResult, MediaInfo
+from derush.models import Cut, CutterResult, KeepSegment, MediaInfo
 
 
 class BaseExporter(ABC):
@@ -27,11 +29,11 @@ class BaseExporter(ABC):
         pass
 
     @staticmethod
-    def sort_cuts_chronologically(cuts: list["Cut"]) -> list["Cut"]:
+    def sort_cuts_chronologically(cuts: list[Cut]) -> list[Cut]:
         """Sort cuts by start time."""
         return sorted(cuts, key=lambda c: c.start)
 
     @staticmethod
-    def sort_keep_segments_chronologically(segments: list["KeepSegment"]) -> list["KeepSegment"]:
+    def sort_keep_segments_chronologically(segments: list[KeepSegment]) -> list[KeepSegment]:
         """Sort keep segments by start time."""
         return sorted(segments, key=lambda s: s.start)

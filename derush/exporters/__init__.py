@@ -1,4 +1,4 @@
-"""Export modules for different formats (FCPXML, EDL, JSON)."""
+"""Export modules for different formats (FCPXML, JSON)."""
 
 from derush.exporters.base import BaseExporter
 from derush.exporters.json import JSONExporter
@@ -10,10 +10,4 @@ def get_fcpxml_exporter():
     return FCPXMLExporter()
 
 
-def get_edl_exporter():
-    """Get EDL exporter."""
-    from derush.exporters.edl import EDLExporter
-    return EDLExporter()
-
-
-__all__ = ["BaseExporter", "JSONExporter", "get_fcpxml_exporter", "get_edl_exporter"]
+__all__ = ["BaseExporter", "JSONExporter", "get_fcpxml_exporter"]

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from derush.config import CutterConfig, DEFAULT_FILLERS, FILLER_VARIANTS
+from derush.exceptions import ValidationError
 from derush.models import (
     Cut,
     CutterResult,
@@ -287,14 +288,13 @@ def compute_cuts(
                         reason=CutReason.GAP_AFTER_FILLER
                     ))
 
-    # 5. Cut gaps between segments
+    # 5. Cut gaps between segments (use min_gap_cut: threshold for gaps between any two words)
     for i in range(len(words) - 1):
         current = words[i]
         next_word = words[i + 1]
         gap_duration = next_word.start - current.end
 
-        # Large gap = segment boundary
-        if gap_duration >= config.min_silence:
+        if gap_duration >= config.min_gap_cut:
             cuts.append(Cut(
                 start=current.end,
                 end=next_word.start,
@@ -374,19 +374,26 @@ def run_pipeline(
     with open(whisperx_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Extract word_segments (source of truth)
+    # Extract word_segments (source of truth); fallback: build from segments[].words
     word_segments = data.get("word_segments", [])
+    if not word_segments and data.get("segments"):
+        for seg in data["segments"]:
+            word_segments.extend(seg.get("words", []))
 
-    # Convert to Word objects
-    words = [
-        Word(
-            word=ws["word"],
-            start=ws["start"],
-            end=ws["end"],
-            score=ws.get("score", 1.0)
-        )
-        for ws in word_segments
-    ]
+    # Convert to Word objects; validate structure to avoid cryptic KeyError
+    words = []
+    for i, ws in enumerate(word_segments):
+        try:
+            words.append(Word(
+                word=str(ws.get("word", "")),
+                start=float(ws["start"]),
+                end=float(ws["end"]),
+                score=float(ws.get("score", 1.0)),
+            ))
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValidationError(
+                f"Invalid word segment at index {i} in {whisperx_path}: each entry must have 'start' and 'end' (numbers). {e}"
+            ) from e
 
     # Step 0: Correct misaligned timestamps from WhisperX
     words = correct_word_timestamps(words, config)

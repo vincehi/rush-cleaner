@@ -151,6 +151,8 @@ class MediaInfo:
     has_video: bool         # True for video files, False for audio-only
     file_path: str          # Absolute path to the source file
     nb_frames: Optional[int] = None  # Video stream frame count when available (avoids media offline)
+    audio_sample_rate: Optional[int] = None   # From ffprobe when available (e.g. 48000, 44100)
+    audio_channels: Optional[int] = None      # From ffprobe when available (1=mono, 2=stereo)
 
     @property
     def total_frames(self) -> int:

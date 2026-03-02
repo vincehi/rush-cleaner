@@ -6,9 +6,15 @@ from pathlib import Path
 from lxml import etree
 
 from derush.exporters.base import BaseExporter
+from derush.media_info import parse_fps_rational
 from derush.models import CutterResult, MediaInfo
 
 logger = logging.getLogger(__name__)
+
+# Defaults for timeline naming and audio (overridable for different NLE / locales)
+DEFAULT_EVENT_NAME = "Dérushage Auto"
+DEFAULT_PROJECT_NAME = "Cuts"
+DEFAULT_AUDIO_RATE = 48000
 
 
 class FCPXMLExporter(BaseExporter):
@@ -35,13 +41,7 @@ class FCPXMLExporter(BaseExporter):
         """
         keep_segments = self.sort_keep_segments_chronologically(result.keep_segments)
 
-        # Parse frame rate rational (e.g., "47300/1671" or "25"); fallback for format without "/"
-        if "/" in media_info.fps_rational:
-            fps_num, fps_den = media_info.fps_rational.split("/", 1)
-            fps_num, fps_den = int(fps_num), max(1, int(fps_den))
-        else:
-            fps_num = int(float(media_info.fps_rational))
-            fps_den = 1
+        fps_num, fps_den = parse_fps_rational(media_info.fps_rational)
 
         # Create root element
         fcpxml = etree.Element("fcpxml", version="1.9")
@@ -61,8 +61,11 @@ class FCPXMLExporter(BaseExporter):
         )
 
         # Single asset for the source file — use media-rep child (DaVinci/Resolve style).
-        # audioSources="2" + audioChannels="1" so Resolve sees two discrete channels (L/R) instead
-        # of one stereo stream, which often imports as mono or one-sided in Resolve.
+        # audioSources + audioChannels="1": Resolve maps each source to L/R (stereo) or single (mono).
+        audio_sources = 2
+        if media_info.audio_channels is not None and media_info.audio_channels > 0:
+            audio_sources = media_info.audio_channels
+        audio_rate = media_info.audio_sample_rate or DEFAULT_AUDIO_RATE
         # Use video stream nb_frames when available so asset duration never exceeds real frame count
         # (format duration can be longer than stream → "media offline" at end of timeline).
         file_url = Path(media_info.file_path).as_uri()
@@ -80,9 +83,9 @@ class FCPXMLExporter(BaseExporter):
             format="r1",
             hasVideo="1" if media_info.has_video else "0",
             hasAudio="1",
-            audioSources="2",
+            audioSources=str(audio_sources),
             audioChannels="1",
-            audioRate="48000",
+            audioRate=str(audio_rate),
             start="0s",
             duration=duration_rat,
         )
@@ -90,8 +93,8 @@ class FCPXMLExporter(BaseExporter):
 
         # Library section (required for DaVinci Resolve)
         library = etree.SubElement(fcpxml, "library")
-        event = etree.SubElement(library, "event", name="Dérushage Auto")
-        project = etree.SubElement(event, "project", name="Cuts")
+        event = etree.SubElement(library, "event", name=DEFAULT_EVENT_NAME)
+        project = etree.SubElement(event, "project", name=DEFAULT_PROJECT_NAME)
 
         # Spine: one asset-clip per segment (same ref r2) — avoids mono / one-sided audio.
         spine = etree.Element("spine")
@@ -146,7 +149,7 @@ class FCPXMLExporter(BaseExporter):
             tcStart="0s",
             tcFormat="NDF",
             audioLayout="stereo",
-            audioRate="48000"
+            audioRate=str(audio_rate),
         )
         sequence.append(spine)
 
@@ -170,10 +173,3 @@ class FCPXMLExporter(BaseExporter):
     def _frames_to_rational(self, frames: int, fps_num: int, fps_den: int) -> str:
         """Convert frame count to rational time (num/den)s format."""
         return f"{frames * fps_den}/{fps_num}s"
-
-    def _seconds_to_rational(
-        self, seconds: float, fps_num: int, fps_den: int
-    ) -> str:
-        """Convert seconds to rational time (num/den)s format."""
-        frames = self._seconds_to_frames(seconds, fps_num, fps_den)
-        return self._frames_to_rational(frames, fps_num, fps_den)

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from derush.exceptions import TranscriptionError
 from derush.models import Segment, Word
 
 # Hotwords to bias Whisper toward transcribing filler words (improves detection)
@@ -19,6 +20,7 @@ def transcribe(
     device: str = "cpu",
     chunk_size: int = 15,
     whisperx_output: Optional[Path] = None,
+    vad_method: str = "pyannote",
 ) -> list[Segment]:
     """
     Transcribe audio/video file using WhisperX with word-level alignment.
@@ -34,26 +36,26 @@ def transcribe(
         chunk_size: Max duration (seconds) for merged VAD chunks. Default 15 gives more
             segments than WhisperX default (30), so short fillers are less often merged away.
         whisperx_output: Optional path to save the raw WhisperX result as JSON.
+        vad_method: VAD backend ("silero" or "pyannote"). Default "pyannote" (WhisperX default).
 
     Returns:
         List of transcribed segments with word-level timestamps
 
     Raises:
-        FileNotFoundError: If the input file doesn't exist
-        RuntimeError: If transcription fails
+        TranscriptionError: If the file doesn't exist or transcription fails
     """
     if not file_path.exists():
-        raise FileNotFoundError(f"Media file not found: {file_path}")
+        raise TranscriptionError(f"Media file not found: {file_path}") from None
 
     # Import whisperx here to allow module to load without it installed
     try:
         import whisperx
-    except ImportError:
-        raise RuntimeError(
+    except ImportError as e:
+        raise TranscriptionError(
             "whisperx is not installed. Install it with: pip install whisperx"
-        )
+        ) from e
 
-    # Compute type based on device
+    # Compute type: float16 on GPU; int8 on CPU (recommended by faster-whisper for speed/memory)
     compute_type = "float16" if device == "cuda" else "int8"
 
     # Options to improve filler word transcription (see WhisperX/faster-whisper docs)
@@ -63,13 +65,16 @@ def transcribe(
     }
     vad_options = {"chunk_size": chunk_size}
 
-    # Load model
+    # Load model with language when known, so WhisperX creates the tokenizer once
+    # and does not log "No language specified" or run per-file language detection.
     model = whisperx.load_model(
         model_size,
         device=device,
         compute_type=compute_type,
         asr_options=asr_options,
         vad_options=vad_options,
+        language=language,
+        vad_method=vad_method,
     )
 
     # Load audio
@@ -81,19 +86,25 @@ def transcribe(
     # Detect language from result if not specified
     detected_language = result.get("language", language if language else "en")
 
-    # Align for word-level timestamps
-    model_a, metadata = whisperx.load_align_model(
-        language_code=detected_language,
-        device=device
-    )
-    result = whisperx.align(
-        result["segments"],
-        model_a,
-        metadata,
-        audio,
-        device,
-        return_char_alignments=False
-    )
+    # Align for word-level timestamps (can fail for unsupported language or missing model)
+    try:
+        model_a, metadata = whisperx.load_align_model(
+            language_code=detected_language,
+            device=device
+        )
+        result = whisperx.align(
+            result["segments"],
+            model_a,
+            metadata,
+            audio,
+            device,
+            return_char_alignments=False
+        )
+    except (ValueError, RuntimeError, OSError) as e:
+        raise TranscriptionError(
+            f"Alignment failed for language '{detected_language}'. "
+            "Check that the language is supported by WhisperX alignment models, or try another language."
+        ) from e
 
     # Add detected language to result for output
     result["language"] = detected_language

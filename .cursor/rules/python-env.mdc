@@ -1,0 +1,8 @@
+---
+description: How to run Python, tests, and lint in this project
+alwaysApply: true
+---
+
+# Python
+
+Voir [PYTHON.md](PYTHON.md). Utiliser le venv du projet : `make test`, `make lint`, `make format` ou `./venv/bin/pytest`, `./venv/bin/ruff` (ne pas supposer qu’ils sont dans le PATH).

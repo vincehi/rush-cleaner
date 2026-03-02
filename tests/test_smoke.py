@@ -35,12 +35,10 @@ class TestModuleImports:
         """Test importing exporter modules."""
         from derush.exporters.base import BaseExporter
         from derush.exporters.fcpxml import FCPXMLExporter
-        from derush.exporters.edl import EDLExporter
         from derush.exporters.json import JSONExporter
 
         assert BaseExporter is not None
         assert FCPXMLExporter is not None
-        assert EDLExporter is not None
         assert JSONExporter is not None
 
     def test_import_cli(self):

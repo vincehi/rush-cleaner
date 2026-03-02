@@ -4,78 +4,19 @@ Thank you for your interest in contributing to Derush! This document provides gu
 
 ## Development Setup
 
-### Prerequisites
+**Environnement et commandes : [PYTHON.md](PYTHON.md).**
 
-- Python 3.10 or higher
-- Git
+1. Fork & clone, then `cd derush`
+2. `make install` (crée le venv et installe les deps), ou voir PYTHON.md pour les commandes manuelles
+3. Optionnel : `pre-commit install`
 
-### Getting Started
+## Tests
 
-1. Fork the repository on GitHub
-2. Clone your fork locally:
-   ```bash
-   git clone https://github.com/your-username/derush.git
-   cd derush
-   ```
+`make test` ou `pytest tests/ -v` (venv activé). Couverture : `pytest tests/ --cov=derush --cov-report=html`. Détails dans PYTHON.md.
 
-3. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+## Code style
 
-4. Install the package in development mode:
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-5. Install pre-commit hooks:
-   ```bash
-   pre-commit install
-   ```
-
-## Running Tests
-
-Run the test suite:
-```bash
-pytest tests/ -v
-```
-
-Run with coverage:
-```bash
-pytest tests/ --cov=src --cov-report=html
-```
-
-Run specific test categories:
-```bash
-pytest tests/ -m "not integration"  # Skip integration tests
-pytest tests/test_integration.py    # Run only integration tests
-```
-
-## Code Style
-
-We use **Ruff** for linting and formatting. The pre-commit hooks will automatically check and fix these issues.
-
-Check your code:
-```bash
-ruff check src/
-```
-
-Format your code:
-```bash
-ruff format src/
-```
-
-The configuration is in `pyproject.toml`:
-- Line length: 100 characters
-- Target Python: 3.10+
-
-## Type Checking
-
-We use mypy for static type checking:
-```bash
-mypy src/
-```
+Ruff (config dans `pyproject.toml`). `make lint` et `make format`.
 
 ## Making Changes
 
@@ -131,10 +72,8 @@ and speaking styles.
 ## Pre-commit Checklist
 
 Before submitting a PR, ensure:
-- [ ] All tests pass (`pytest tests/ -v`)
-- [ ] Code is formatted (`ruff format src/`)
-- [ ] Linter checks pass (`ruff check src/`)
-- [ ] Type checks pass (`mypy src/`)
+- [ ] All tests pass (`make test`)
+- [ ] Lint and format OK (`make lint` then `make format`)
 - [ ] Coverage is above 80%
 - [ ] Documentation is updated
 - [ ] CHANGELOG.md is updated

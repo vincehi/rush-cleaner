@@ -1,16 +1,23 @@
 # Derush - AI Context
 
-Outil de dérushage vidéo automatique. Détecte les silences et filler words, génère des fichiers de coupe (FCPXML, EDL, JSON) pour DaVinci Resolve, Final Cut Pro, Premiere Pro.
+Outil de dérushage vidéo automatique. Détecte les silences et filler words, génère des fichiers de coupe (FCPXML, JSON) pour DaVinci Resolve, Final Cut Pro.
+
+## Python
+
+Voir **[PYTHON.md](PYTHON.md)**. Utiliser `make test`, `make lint`, `make format` ou `./venv/bin/pytest`, `./venv/bin/ruff` (ne jamais supposer qu’ils sont dans le PATH).
 
 ## Architecture
 
 ```
-src/
+derush/
+├── cli.py            # Entry point (Typer), orchestration
 ├── transcriber.py    # WhisperX transcription + word-level alignment
-├── cutter.py         # Pipeline: correction timestamps → classification → cuts → keep_segments
-├── exporters/        # FCPXML, EDL, JSON
-├── config.py         # Filler words, seuils
-└── models.py         # Dataclasses
+├── cutter.py        # Pipeline: correction → classification → cuts → keep_segments
+├── media_info.py    # ffprobe extraction → MediaInfo
+├── config.py        # CutterConfig, fillers, seuils
+├── models.py        # Dataclasses (Word, Segment, Cut, KeepSegment, CutterResult, MediaInfo)
+├── exceptions.py    # DerushError, TranscriptionError, MediaInfoError, ExportError
+└── exporters/       # FCPXML, JSON (base + format-specific)
 ```
 
 ## Pipeline
@@ -19,19 +26,14 @@ src/
 2. **Correction** - Ajuste les mots trop longs (>2s) ou mal alignés (score <0.5)
 3. **Classification** - Marque les fillers (euh, hmm, ben, bah)
 4. **Cuts** - Détecte silences + fillers + gaps
-5. **Export** - FCPXML/EDL/JSON
+5. **Export** - FCPXML/JSON
 
 ## Commandes utiles
 
 ```bash
-# Tester avec le sample
-./generate_outputs.sh
-
-# Tests
-pytest tests/ -v
-
-# Linter
-ruff check src/
+./generate_outputs.sh   # sample (utilise venv)
+make test               # tests
+make lint && make format
 ```
 
 ## Filler words actuels

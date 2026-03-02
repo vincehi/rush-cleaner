@@ -8,7 +8,6 @@ from lxml import etree
 
 from derush.exporters.base import BaseExporter
 from derush.exporters.fcpxml import FCPXMLExporter
-from derush.exporters.edl import EDLExporter
 from derush.exporters.json import JSONExporter
 from derush.models import MediaInfo
 
@@ -291,85 +290,6 @@ class TestFCPXMLExporter:
         assert len(tree.xpath("//spine/asset-clip")) == len(
             sample_cutter_result.keep_segments
         )
-
-
-class TestEDLExporter:
-    """Tests for EDLExporter class."""
-
-    def test_export_creates_valid_edl(self, tmp_path, sample_cutter_result, sample_media_info):
-        """Test that EDL export creates a valid EDL file."""
-        output_path = tmp_path / "output.edl"
-
-        exporter = EDLExporter()
-        exporter.export(sample_cutter_result, sample_media_info, output_path)
-
-        assert output_path.exists()
-
-        content = output_path.read_text()
-
-        # Check header
-        assert "TITLE:" in content
-
-    def test_export_non_drop_frame(self, tmp_path, sample_cutter_result, sample_media_info):
-        """Test EDL with non-dropframe timecodes (25fps)."""
-        output_path = tmp_path / "output.edl"
-
-        exporter = EDLExporter()
-        exporter.export(sample_cutter_result, sample_media_info, output_path)
-
-        content = output_path.read_text()
-
-        # Timecodes should use colons for non-drop frame
-        assert "00:00:02:" in content
-
-    def test_export_drop_frame(self, tmp_path, sample_cutter_result, sample_media_info_2997):
-        """Test EDL with drop-frame timecodes (29.97fps)."""
-        output_path = tmp_path / "output.edl"
-
-        exporter = EDLExporter()
-        exporter.export(sample_cutter_result, sample_media_info_2997, output_path)
-
-        content = output_path.read_text()
-
-        # Drop frame uses semicolons in timecodes (e.g., 00:00:00;00)
-        assert ";" in content, "Drop-frame timecodes should use semicolons"
-
-        # Verify timecode format: HH:MM:SS;FF
-        import re
-        timecode_pattern = r'\d{2}:\d{2}:\d{2};\d{2}'
-        assert re.search(timecode_pattern, content), "Should contain drop-frame timecodes"
-
-    def test_export_event_format(self, tmp_path, sample_cutter_result, sample_media_info):
-        """Test EDL event format (CMX3600)."""
-        output_path = tmp_path / "output.edl"
-
-        exporter = EDLExporter()
-        exporter.export(sample_cutter_result, sample_media_info, output_path)
-
-        content = output_path.read_text()
-        lines = content.strip().split("\n")
-
-        # Find event lines (start with 001, 002, etc.)
-        event_lines = [l for l in lines if l.startswith("001") or l.startswith("002")]
-
-        assert len(event_lines) >= 1
-
-        # Event line should have format: NNN  REEL   V     C        TC TC TC TC
-        first_event = event_lines[0]
-        assert "V" in first_event
-        assert "C" in first_event
-
-    def test_export_includes_comments(self, tmp_path, sample_cutter_result, sample_media_info):
-        """Test that EDL includes comment lines with cut type."""
-        output_path = tmp_path / "output.edl"
-
-        exporter = EDLExporter()
-        exporter.export(sample_cutter_result, sample_media_info, output_path)
-
-        content = output_path.read_text()
-
-        # Comment lines start with *
-        assert "*" in content
 
 
 class TestJSONExporter:

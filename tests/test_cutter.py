@@ -211,13 +211,36 @@ class TestComputeCuts:
             Word(word="Second", start=1.2, end=2.0, score=0.9, status=WordStatus.KEPT),
         ]
 
-        # Gap is 0.2s, with min_silence=0.5 it should NOT be cut
+        # Gap is 0.2s, below default min_gap_cut (0.3) → not cut
         config = CutterConfig(min_silence=0.5)
         cuts = compute_cuts(words, config, total_duration=2.0)
 
         # No gap cut should exist
         gap_cut = next((c for c in cuts if c.start == 1.0 and c.end == 1.2), None)
         assert gap_cut is None
+
+    def test_min_gap_cut_controls_gap_between_segments(self):
+        """Gap-between-segments threshold is min_gap_cut, not min_silence."""
+        words = [
+            Word(word="A", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="B", start=0.9, end=1.2, score=0.9, status=WordStatus.KEPT),
+        ]
+        # Gap = 0.4s
+        config_low = CutterConfig(min_silence=0.5, min_gap_cut=0.3)
+        cuts_low = compute_cuts(words, config_low, total_duration=2.0)
+        gap_cut_low = next(
+            (c for c in cuts_low if c.reason == CutReason.GAP_BETWEEN_SEGMENTS), None
+        )
+        assert gap_cut_low is not None
+        assert gap_cut_low.start == 0.5
+        assert gap_cut_low.end == 0.9
+
+        config_high = CutterConfig(min_silence=0.5, min_gap_cut=0.5)
+        cuts_high = compute_cuts(words, config_high, total_duration=2.0)
+        gap_cut_high = next(
+            (c for c in cuts_high if c.reason == CutReason.GAP_BETWEEN_SEGMENTS), None
+        )
+        assert gap_cut_high is None  # 0.4s < 0.5
 
     def test_gap_after_filler_cut(self):
         """Test that gaps after fillers are cut when enabled."""
@@ -303,3 +326,56 @@ class TestComputeKeepSegments:
         assert len(keep_segments) == 1
         assert keep_segments[0].start == 0.0
         assert keep_segments[0].end == 3.0
+
+
+class TestRunPipelineValidation:
+    """Tests for run_pipeline input validation."""
+
+    def test_invalid_word_segment_raises_validation_error(self, tmp_path):
+        """Malformed word segment (missing 'start') raises ValidationError with clear message."""
+        import json
+        from derush.cutter import run_pipeline
+        from derush.exceptions import ValidationError
+
+        bad_json = tmp_path / "bad.json"
+        bad_json.write_text(json.dumps({
+            "word_segments": [
+                {"word": "hello", "end": 1.0},
+            ],
+            "language": "fr",
+        }))
+
+        with pytest.raises(ValidationError, match="Invalid word segment.*'start'.*'end'"):
+            run_pipeline(
+                whisperx_path=bad_json,
+                total_duration=10.0,
+                language="fr",
+            )
+
+    def test_word_segments_built_from_segments_when_missing(self, tmp_path):
+        """When word_segments is missing, it is built from segments[].words."""
+        import json
+        from derush.cutter import run_pipeline
+
+        json_path = tmp_path / "from_segments.json"
+        json_path.write_text(json.dumps({
+            "segments": [
+                {
+                    "start": 0.0,
+                    "end": 1.0,
+                    "text": "hi",
+                    "words": [
+                        {"word": "hi", "start": 0.0, "end": 1.0, "score": 0.9},
+                    ],
+                },
+            ],
+            "language": "fr",
+        }))
+
+        result = run_pipeline(
+            whisperx_path=json_path,
+            total_duration=2.0,
+            language="fr",
+        )
+        assert result.total_words == 1
+        assert result.words[0].word == "hi"

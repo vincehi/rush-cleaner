@@ -7,7 +7,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from derush.media_info import get_media_info, _parse_frame_rate
+from derush.exceptions import MediaInfoError
+from derush.media_info import get_media_info, parse_fps_rational, _parse_frame_rate
 from derush.models import MediaInfo
 
 
@@ -28,13 +29,30 @@ class TestParseFrameRate:
         assert _parse_frame_rate("24") == 24.0
 
 
+class TestParseFpsRational:
+    """Tests for parse_fps_rational (shared by FCPXML and others)."""
+
+    def test_rational_with_slash(self):
+        assert parse_fps_rational("30000/1001") == (30000, 1001)
+        assert parse_fps_rational("25/1") == (25, 1)
+        assert parse_fps_rational("47300/1671") == (47300, 1671)
+
+    def test_plain_number(self):
+        assert parse_fps_rational("25") == (25, 1)
+        assert parse_fps_rational("30") == (30, 1)
+
+    def test_denominator_at_least_one(self):
+        # Would require "25/0" to be rejected
+        assert parse_fps_rational("1/2") == (1, 2)
+
+
 class TestGetMediaInfo:
     """Tests for get_media_info function."""
 
     def test_file_not_found(self, tmp_path):
         """Test error when file doesn't exist."""
         non_existent = tmp_path / "nonexistent.mp4"
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(MediaInfoError, match="not found"):
             get_media_info(non_existent)
 
     @patch("derush.media_info.shutil.which")
@@ -52,6 +70,21 @@ class TestGetMediaInfo:
         assert result.fps_rational == "25/1"
         assert result.has_video is False
         assert result.file_path == str(test_file.absolute())
+
+    @patch("derush.media_info.shutil.which")
+    def test_fallback_fps_rational_ntsc_and_24p(self, mock_which, tmp_path):
+        """Fallback uses correct rational for 29.97 (NTSC) and 23.976 (24p)."""
+        mock_which.return_value = None
+        test_file = tmp_path / "test.mp4"
+        test_file.touch()
+
+        result_2997 = get_media_info(test_file, fallback_fps=29.97)
+        assert result_2997.fps == pytest.approx(29.97, rel=0.01)
+        assert result_2997.fps_rational == "30000/1001"
+
+        result_23976 = get_media_info(test_file, fallback_fps=23.976)
+        assert result_23976.fps == pytest.approx(23.976, rel=0.01)
+        assert result_23976.fps_rational == "24000/1001"
 
     @patch("derush.media_info.shutil.which")
     @patch("derush.media_info.subprocess.run")
@@ -175,7 +208,7 @@ class TestGetMediaInfo:
             stderr="Error: invalid file"
         )
 
-        with pytest.raises(RuntimeError, match="ffprobe failed"):
+        with pytest.raises(MediaInfoError, match="ffprobe failed"):
             get_media_info(test_file)
 
 

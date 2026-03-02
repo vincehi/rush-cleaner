@@ -6,6 +6,7 @@ import sys
 
 import pytest
 
+from derush.exceptions import TranscriptionError
 from derush.models import Segment, Word
 from derush.transcriber import transcribe
 
@@ -17,7 +18,7 @@ class TestTranscribe:
         """Test error when file doesn't exist."""
         non_existent = tmp_path / "nonexistent.mp4"
 
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(TranscriptionError, match="not found"):
             transcribe(non_existent)
 
     def test_transcribe_returns_segments(self, tmp_path):
@@ -69,6 +70,11 @@ class TestTranscribe:
 
         with patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = transcribe(test_file, language="en", model_size="base", device="cpu")
+
+        # Language is passed to load_model so WhisperX creates tokenizer once (no "No language specified" log)
+        mock_whisperx.load_model.assert_called_once()
+        load_model_kwargs = mock_whisperx.load_model.call_args[1]
+        assert load_model_kwargs.get("language") == "en"
 
         assert len(result) == 1
         assert isinstance(result[0], Segment)
@@ -146,7 +152,9 @@ class TestTranscribe:
         with patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = transcribe(test_file, language=None)
 
-        # Should have called transcribe without language specified
+        # load_model and transcribe both receive language=None so WhisperX does per-file detection
+        mock_whisperx.load_model.assert_called_once()
+        assert mock_whisperx.load_model.call_args[1].get("language") is None
         mock_model.transcribe.assert_called_once()
         call_kwargs = mock_model.transcribe.call_args[1]
         assert "language" not in call_kwargs or call_kwargs["language"] is None
@@ -158,7 +166,7 @@ class TestTranscribe:
 
         # Remove whisperx from modules if present
         with patch.dict("sys.modules", {"whisperx": None}):
-            with pytest.raises(RuntimeError, match="whisperx is not installed"):
+            with pytest.raises(TranscriptionError, match="whisperx is not installed"):
                 transcribe(test_file)
 
     def test_empty_transcription(self, tmp_path):

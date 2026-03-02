@@ -10,7 +10,7 @@ from derush import __version__
 from derush.config import CutterConfig
 from derush.cutter import run_pipeline
 from derush.exceptions import DerushError, TranscriptionError, MediaInfoError
-from derush.exporters import JSONExporter, get_fcpxml_exporter, get_edl_exporter
+from derush.exporters import JSONExporter, get_fcpxml_exporter
 from derush.media_info import get_media_info
 from derush.transcriber import transcribe
 
@@ -59,7 +59,7 @@ def main(
     output_format: str = typer.Option(
         "json",
         "--format", "-f",
-        help="Output format: fcpxml, edl, or json"
+        help="Output format: fcpxml or json"
     ),
     language: Optional[str] = typer.Option(
         None,
@@ -101,6 +101,11 @@ def main(
         "--chunk-size",
         help="Max VAD chunk size in seconds (smaller = more segments, better filler detection)"
     ),
+    vad: str = typer.Option(
+        "pyannote",
+        "--vad",
+        help="VAD backend: pyannote (default) or silero (avoids torchcodec warning if Pyannote fails to load)"
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose", "-v",
@@ -128,18 +133,26 @@ def main(
     # Setup logging
     setup_logging(verbose)
 
-    # Validate format
+    # Validate format and options
     output_format = output_format.lower()
-    if output_format not in ["fcpxml", "edl", "json"]:
-        error_msg = f"Invalid format '{output_format}'. Use: fcpxml, edl, or json"
+    if output_format not in ["fcpxml", "json"]:
+        error_msg = f"Invalid format '{output_format}'. Use: fcpxml or json"
         typer.echo(error_msg, err=True)
         logger.error(error_msg)
+        raise typer.Exit(1)
+    if vad not in ("pyannote", "silero"):
+        typer.echo(f"Invalid --vad '{vad}'. Use: pyannote or silero.", err=True)
         raise typer.Exit(1)
 
     # Get media info
     typer.echo(f"Analyzing media file: {input_file}")
     fallback_fps = fps if fps else 25.0
-    media_info = get_media_info(input_file, fallback_fps=fallback_fps)
+    try:
+        media_info = get_media_info(input_file, fallback_fps=fallback_fps)
+    except MediaInfoError as e:
+        typer.echo(f"Media info extraction failed: {e}", err=True)
+        logger.error(f"Media info extraction failed: {e}")
+        raise typer.Exit(1)
 
     # Override FPS if specified
     if fps:
@@ -174,14 +187,11 @@ def main(
             device=device,
             chunk_size=chunk_size,
             whisperx_output=whisperx_output,
+            vad_method=vad,
         )
     except (RuntimeError, TranscriptionError) as e:
         typer.echo(f"Transcription failed: {e}", err=True)
         logger.error(f"Transcription failed: {e}")
-        raise typer.Exit(1)
-    except MediaInfoError as e:
-        typer.echo(f"Media info extraction failed: {e}", err=True)
-        logger.error(f"Media info extraction failed: {e}")
         raise typer.Exit(1)
     except DerushError as e:
         typer.echo(f"Error: {e}", err=True)
@@ -244,14 +254,13 @@ def main(
     # Determine output path
     if output is None:
         output_dir.mkdir(exist_ok=True)
-        extension = {"fcpxml": ".fcpxml", "edl": ".edl", "json": ".json"}[output_format]
+        extension = {"fcpxml": ".fcpxml", "json": ".json"}[output_format]
         output = output_dir / f"{input_file.stem}{extension}"
 
     # Export
     typer.echo(f"\nExporting to {output_format.upper()}...")
     exporters = {
         "fcpxml": get_fcpxml_exporter(),
-        "edl": get_edl_exporter(),
         "json": JSONExporter(),
     }
 

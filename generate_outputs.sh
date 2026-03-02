@@ -1,11 +1,11 @@
 #!/bin/bash
-# Generate outputs from a media file using derush tool
-# Usage: ./generate_outputs.sh <input_file> [language]
+# Generate outputs from a media file using derush (dev helper).
+# Usage: ./generate_outputs.sh [input_file] [language] [model_size]
 #
-# This script does everything:
-# 1. Transcribes with WhisperX
-# 2. Runs cutting pipeline
-# 3. Exports to FCPXML, EDL, JSON
+# Uses derush as single source of truth:
+# 1. derush.transcriber for WhisperX transcription + alignment
+# 2. derush.media_info for file metadata
+# 3. derush.cutter + exporters for pipeline and FCPXML/JSON
 #
 
 set -e
@@ -46,51 +46,29 @@ echo -e "${YELLOW}Cleaning existing outputs for $BASENAME...${NC}"
 rm -f "$OUTPUT_DIR/${BASENAME}".* 2>/dev/null || true
 rm -rf "$OUTPUT_DIR/${BASENAME}" 2>/dev/null || true
 
-echo -e "${BLUE}Step 1: Transcribing with WhisperX...${NC}"
+echo -e "${BLUE}Step 1: Transcribing with derush (WhisperX)...${NC}"
 python -c "
-import json
-import whisperx
 from pathlib import Path
+from derush.transcriber import transcribe
 
-file_path = r'$INPUT_FILE'
-language = r'$LANGUAGE'
+file_path = Path(r'$INPUT_FILE')
+language = r'$LANGUAGE'.strip() or None
 model_size = r'$MODEL_SIZE'
 output_file = Path(r'$WHISPERX_FILE')
-device = 'cpu'
-compute_type = 'int8'
 
-# ASR options to improve filler detection
-asr_options = {
-    'hotwords': 'hmm euh um uh ben bah du coup en fait bon tu vois like you know',
-    'no_speech_threshold': 0.5,
-}
-vad_options = {'chunk_size': 15}
-
-print(f'Loading WhisperX model ({model_size})...')
-model = whisperx.load_model(model_size, device=device, compute_type=compute_type, asr_options=asr_options, vad_options=vad_options)
-
-print('Loading audio...')
-audio = whisperx.load_audio(file_path)
-
-print('Transcribing...')
-result = model.transcribe(audio, language=language, chunk_size=15)
-
-detected_language = result.get('language', language)
-
-print(f'Aligning (language: {detected_language})...')
-model_a, metadata = whisperx.load_align_model(language_code=detected_language, device=device)
-result = whisperx.align(result['segments'], model_a, metadata, audio, device, return_char_alignments=False)
-
-result['language'] = detected_language
-
-# Save
-output_file.parent.mkdir(parents=True, exist_ok=True)
-with open(output_file, 'w', encoding='utf-8') as f:
-    json.dump(result, f, ensure_ascii=False, indent=2)
-
+segments = transcribe(
+    file_path,
+    language=language,
+    model_size=model_size,
+    device='cpu',
+    chunk_size=15,
+    whisperx_output=output_file,
+)
+n_segments = len(segments)
+n_words = sum(len(s.words) for s in segments)
 print(f'Saved: {output_file}')
-print(f'Segments: {len(result.get(\"segments\", []))}')
-print(f'Words: {len(result.get(\"word_segments\", []))}')
+print(f'Segments: {n_segments}')
+print(f'Words: {n_words}')
 "
 
 echo ""
@@ -111,7 +89,7 @@ python -c "
 from pathlib import Path
 from derush.cutter import run_pipeline
 from derush.config import CutterConfig
-from derush.exporters import get_fcpxml_exporter, get_edl_exporter
+from derush.exporters import get_fcpxml_exporter
 from derush.exporters.json import JSONExporter
 from derush.media_info import get_media_info
 
@@ -131,9 +109,6 @@ result = run_pipeline(
 # Export all formats
 fcpxml_exporter = get_fcpxml_exporter()
 fcpxml_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.fcpxml'))
-
-edl_exporter = get_edl_exporter()
-edl_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.edl'))
 
 json_exporter = JSONExporter()
 json_exporter.export(result, media_info, Path(r'$OUTPUT_DIR/${BASENAME}.json'))

@@ -53,7 +53,7 @@ class TestCLI:
             result = runner.invoke(app, [str(test_file), "--format", "invalid"])
 
         assert result.exit_code != 0
-        assert "Invalid format" in result.stdout
+        assert "Invalid format" in (result.stdout + result.stderr)
 
     def test_fcpxml_output(self, tmp_path, sample_media_info, mock_whisperx):
         """Test that --format fcpxml generates .fcpxml file."""
@@ -64,19 +64,6 @@ class TestCLI:
         with patch("derush.cli.get_media_info", return_value=sample_media_info), \
              patch.dict("sys.modules", {"whisperx": mock_whisperx}):
             result = runner.invoke(app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)])
-
-        assert output_file.exists()
-        assert "Exporting" in result.stdout
-
-    def test_edl_output(self, tmp_path, sample_media_info, mock_whisperx):
-        """Test that --format edl generates .edl file."""
-        test_file = tmp_path / "test.mp4"
-        test_file.touch()
-        output_file = tmp_path / "test.edl"
-
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
-            result = runner.invoke(app, [str(test_file), "--format", "edl", "-o", str(output_file)])
 
         assert output_file.exists()
         assert "Exporting" in result.stdout
@@ -119,7 +106,7 @@ class TestCLI:
             result = runner.invoke(app, [str(test_file)])
 
         assert result.exit_code != 0
-        assert "Error" in result.stdout
+        assert "Transcription failed" in (result.stdout + result.stderr)
 
     def test_displays_summary(self, tmp_path, sample_media_info):
         """Test that CLI displays summary of detected cuts."""

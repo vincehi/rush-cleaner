@@ -5,46 +5,30 @@ Outil de dérushage vidéo automatique - Detectez les silences et filler words p
 ## Quick Start
 
 ```bash
-# Installation
-pip install -e ".[dev]"
-
-# Utilisation basique
-derush ma_video.mp4
+git clone https://github.com/vincentsourice/derush.git && cd derush
+make install
+./venv/bin/derush ma_video.mp4
 ```
 
-Le fichier genere (`ma_video.fcpxml`) peut etre importe directement dans DaVinci Resolve, Final Cut Pro ou Premiere Pro.
+Le fichier généré (FCPXML par défaut) s’importe dans DaVinci Resolve, FCP ou Premiere. Détail env. et commandes dev : **[PYTHON.md](PYTHON.md)**.
 
-## Prerequis
+## Prérequis
 
-- **Python 3.10 a 3.13** (Python 3.14 non supporte par WhisperX)
-- **FFmpeg** - `brew install ffmpeg` (macOS) ou `sudo apt install ffmpeg` (Ubuntu)
+- Python 3.10–3.14, FFmpeg (`brew install ffmpeg` / `apt install ffmpeg`)
 
-## Installation
+## Dépannage
 
-```bash
-# Cloner le projet
-git clone https://github.com/vincentsourice/derush.git
-cd derush
+**Warning torchcodec / Pyannote** : Au lancement, vous pouvez voir un long avertissement du type « torchcodec is not installed correctly so built-in audio decoding will fail ». Il vient de Pyannote (détection de voix utilisée par WhisperX). L’audio est en réalité chargé via FFmpeg, donc le logiciel fonctionne ; le message indique toutefois un environnement à corriger.
 
-# Creer un environnement virtuel
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-
-# Installer
-pip install -e ".[dev]"
-
-# Verifier
-derush --help
-```
+Pour faire disparaître l’avertissement (recommandé) :
+- **Option A** : Aligner les versions PyTorch / TorchCodec / FFmpeg selon la [table de compatibilité TorchCodec](https://github.com/pytorch/torchcodec?tab=readme-ov-file#installing-torchcodec), ou installer une version de FFmpeg compatible (ex. `brew install ffmpeg` et vérifier que les libs sont bien trouvées).
+- **Option B** : Utiliser le VAD Silero : `derush video.mp4 --vad silero` (ou `vad_method="silero"` via l’API Python).
 
 ## Utilisation
 
 ```bash
 # Analyse basique (format FCPXML par defaut)
 derush video.mp4
-
-# Format EDL (Premiere Pro, Avid)
-derush video.mp4 --format edl
 
 # Specifier la langue
 derush video.mp4 --lang fr
@@ -66,12 +50,13 @@ derush video.mp4 --model large
 
 | Option | Description | Defaut |
 |--------|-------------|--------|
-| `--format`, `-f` | Format de sortie (`fcpxml`, `edl`, `json`) | `fcpxml` |
+| `--format`, `-f` | Format de sortie (`fcpxml`, `json`) | `fcpxml` |
 | `--lang`, `-l` | Langue (`fr`, `en`) | auto-detection |
 | `--min-silence` | Duree min. silence (secondes) | `0.5` |
 | `--fillers` | Filler words personnalises | - |
 | `--fps` | Forcer le FPS | auto |
 | `--model`, `-m` | Modele Whisper (`tiny`, `base`, `small`, `medium`, `large`) | `base` |
+| `--vad` | VAD : `pyannote` ou `silero` (silero évite le warning torchcodec) | `pyannote` |
 | `--device` | Appareil (`cpu`, `cuda`) | `cpu` |
 | `--output`, `-o` | Fichier de sortie | auto |
 | `--version`, `-v` | Afficher la version | - |
@@ -80,9 +65,6 @@ derush video.mp4 --model large
 
 ### FCPXML 1.9
 Compatible DaVinci Resolve, Final Cut Pro. Metadonnees riches avec types silence/filler.
-
-### EDL (CMX3600)
-Compatible DaVinci Resolve, Premiere Pro, Avid Media Composer. Standard de l'industrie.
 
 ### JSON
 Pour debug ou integrations personnalisees.
@@ -94,17 +76,22 @@ Pour debug ou integrations personnalisees.
 3. Importez le fichier genere dans votre logiciel de montage
 4. Supprimez les segments detectes sur votre timeline
 
-## Filler words detectes
+## Filler words (par défaut)
 
-**Francais** : euh, ben, du coup, en fait, bon, bah, quoi, tu vois
+Liste définie dans `derush.config.DEFAULT_FILLERS` :
 
-**Anglais** : um, uh, like, you know, I mean, basically, so, right
+**Français** : euh, ben, bah, hmm, bon ben (et variantes)
+
+**Anglais** : um, uh, hmm (et variantes)
+
+Pour en ajouter (ex. « du coup », « tu vois », « like ») : `--fillers "du coup,tu vois"`.
 
 ## Tests
 
 ```bash
-pytest tests/ -v
-pytest tests/ --cov=src --cov-report=html
+make test
+# ou avec couverture
+./venv/bin/pytest tests/ -v --cov=derush --cov-report=html
 ```
 
 ## Licence

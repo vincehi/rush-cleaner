@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WhisperX transcription with word-level alignment
 - Filler words detection (euh, ben, bah, hmm, um, uh)
 - Silence detection for automatic cutting
-- Export formats: FCPXML (Final Cut Pro), EDL (DaVinci Resolve, Premiere Pro), JSON
+- Export formats: FCPXML (Final Cut Pro, DaVinci Resolve), JSON
 - CLI with Typer
 - Comprehensive test suite
 - Code quality tools: Ruff, pytest, pytest-cov

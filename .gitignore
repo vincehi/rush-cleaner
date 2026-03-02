@@ -68,13 +68,7 @@ ehthumbs.db
 Thumbs.db
 
 # Output directories (keep sample files if needed)
-output/*.edl
-output/*.fcpxml
-output/*.xml
-output/*.json
-!output/sample.edl
-!output/sample.fcpxml
-!output/sample.json
+output/
 
 # Temporary files
 *.swp
