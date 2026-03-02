@@ -19,6 +19,13 @@ irm https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.ps1 | ie
 Ensuite : installer **FFmpeg** (requis pour lire les vidéos) — `brew install ffmpeg` (macOS), `apt install ffmpeg` (Linux), `winget install FFmpeg` (Windows).  
 Si `derush` n'est pas trouvé : ajouter au PATH (`$HOME/.local/bin` sur macOS/Linux ; redémarrer le terminal sur Windows).
 
+## Désinstallation
+
+```bash
+uv tool uninstall derush
+```
+(uv doit être dans le PATH.)
+
 ## Quick Start
 
 ```bash
