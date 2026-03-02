@@ -1,14 +1,11 @@
 """Tests for CLI module."""
 
-import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
+from derush import __version__
 from derush.cli import app
-
 
 runner = CliRunner()
 
@@ -33,7 +30,7 @@ class TestCLI:
         result = runner.invoke(app, ["--version"])
 
         assert result.exit_code == 0
-        assert "0.1.0" in result.stdout
+        assert __version__ in result.stdout
 
     def test_file_not_found_error(self, tmp_path):
         """Test error when input file doesn't exist."""
@@ -48,8 +45,10 @@ class TestCLI:
         test_file = tmp_path / "test.mp4"
         test_file.touch()
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
             result = runner.invoke(app, [str(test_file), "--format", "invalid"])
 
         assert result.exit_code != 0
@@ -61,9 +60,13 @@ class TestCLI:
         test_file.touch()
         output_file = tmp_path / "test.fcpxml"
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
-            result = runner.invoke(app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)])
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
+            result = runner.invoke(
+                app, [str(test_file), "--format", "fcpxml", "-o", str(output_file)]
+            )
 
         assert output_file.exists()
         assert "Exporting" in result.stdout
@@ -74,19 +77,38 @@ class TestCLI:
         test_file.touch()
         output_file = tmp_path / "custom_output.fcpxml"
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
             result = runner.invoke(app, [str(test_file), "--output", str(output_file)])
 
         assert output_file.exists()
+
+    def test_default_output_next_to_input(self, tmp_path, sample_media_info, mock_whisperx):
+        """Test that without -o, output is created next to the input file."""
+        test_file = tmp_path / "my_video.mp4"
+        test_file.touch()
+
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
+            result = runner.invoke(app, [str(test_file)])
+
+        assert result.exit_code == 0
+        assert (tmp_path / "my_video.fcpxml").exists()
+        assert (tmp_path / "my_video_whisperx.json").exists()
 
     def test_fps_override(self, tmp_path, sample_media_info, mock_whisperx):
         """Test that --fps overrides auto-detected FPS."""
         test_file = tmp_path / "test.mp4"
         test_file.touch()
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
             result = runner.invoke(app, [str(test_file), "--fps", "30"])
 
         # Should show the overridden FPS
@@ -101,8 +123,10 @@ class TestCLI:
         mock_whisperx = MagicMock()
         mock_whisperx.load_model.side_effect = RuntimeError("Transcription failed")
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
             result = runner.invoke(app, [str(test_file)])
 
         assert result.exit_code != 0
@@ -126,7 +150,7 @@ class TestCLI:
                     "start": 0.0,
                     "end": 2.0,
                     "text": "Hello",
-                    "words": [{"word": "Hello", "start": 0.0, "end": 2.0, "score": 0.9}]
+                    "words": [{"word": "Hello", "start": 0.0, "end": 2.0, "score": 0.9}],
                 },
                 {
                     "start": 3.5,
@@ -134,17 +158,19 @@ class TestCLI:
                     "text": "euh world",
                     "words": [
                         {"word": "euh", "start": 3.5, "end": 3.8, "score": 0.8},
-                        {"word": "world", "start": 3.9, "end": 5.0, "score": 0.9}
-                    ]
-                }
+                        {"word": "world", "start": 3.9, "end": 5.0, "score": 0.9},
+                    ],
+                },
             ],
-            "language": "fr"
+            "language": "fr",
         }
         mock_whisperx.load_align_model.return_value = (MagicMock(), MagicMock())
         mock_whisperx.align.return_value = mock_model.transcribe.return_value
 
-        with patch("derush.cli.get_media_info", return_value=sample_media_info), \
-             patch.dict("sys.modules", {"whisperx": mock_whisperx}):
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
             result = runner.invoke(app, [str(test_file)])
 
         assert "Summary" in result.stdout

@@ -9,14 +9,13 @@ This module implements the "keep segments" approach:
 import json
 import re
 from pathlib import Path
-from typing import Optional
 
-from derush.config import CutterConfig, DEFAULT_FILLERS, FILLER_VARIANTS
+from derush.config import DEFAULT_FILLERS, FILLER_VARIANTS, CutterConfig
 from derush.exceptions import ValidationError
 from derush.models import (
     Cut,
-    CutterResult,
     CutReason,
+    CutterResult,
     CutType,
     KeepSegment,
     Word,
@@ -24,11 +23,10 @@ from derush.models import (
     merge_adjacent_cuts,
 )
 
-
 # Timing constants (in seconds)
 MINIMUM_WORD_DURATION = 0.05  # 50ms minimum duration
-MINIMUM_GAP_THRESHOLD = 0.01   # 10ms minimum gap to cut
-WORD_OVERLAP_BUFFER = 0.001    # 1ms buffer between words
+MINIMUM_GAP_THRESHOLD = 0.01  # 10ms minimum gap to cut
+WORD_OVERLAP_BUFFER = 0.001  # 1ms buffer between words
 
 
 # Average word durations for common words (in seconds)
@@ -56,79 +54,73 @@ def _normalize_word(word: str) -> str:
     return re.sub(r"[^\w\s]", "", word.lower()).strip()
 
 
-def correct_word_timestamps(
-    words: list[Word],
-    config: CutterConfig
-) -> list[Word]:
+def correct_word_timestamps(words: list[Word], config: CutterConfig) -> list[Word]:
     """
     Correct misaligned word timestamps from WhisperX.
-    
+
     Handles two common issues:
     1. Words with abnormally long duration (e.g., "test" lasting 4+ seconds)
        - These absorb silence/gaps that should be detected separately
     2. Words with very low confidence scores (< 0.5)
        - These often have incorrect timestamps
-    
+
     Strategy:
     - For words longer than max_word_duration, truncate them to a reasonable duration
     - Use average durations for common words, or a default max duration
     - This exposes hidden gaps/silences for proper detection
-    
+
     Args:
         words: List of words with potentially incorrect timestamps
         config: Configuration with max_word_duration and min_word_score
-        
+
     Returns:
         List of words with corrected timestamps
     """
     if not words:
         return words
-    
+
     corrected_words = []
-    
+
     for i, word in enumerate(words):
         duration = word.end - word.start
-        
+
         # Check if this word needs correction
-        needs_correction = (
-            duration > config.max_word_duration or
-            word.score < config.min_word_score
-        )
-        
+        needs_correction = duration > config.max_word_duration or word.score < config.min_word_score
+
         if needs_correction:
             # Get expected duration for this word
             normalized = _normalize_word(word.word)
             expected_duration = AVERAGE_WORD_DURATIONS.get(normalized)
-            
+
             # If no known average, estimate based on word length
             if expected_duration is None:
                 # Rough estimate: ~0.1s per character, max 0.5s for content words
                 # Fillers are typically shorter
                 char_count = len(normalized)
                 expected_duration = min(0.08 * char_count, 0.5)
-            
+
             # Truncate the word's end time if it's too long
             new_end = word.start + expected_duration
-            
+
             # Don't extend beyond the next word's start
             if i + 1 < len(words):
                 next_word = words[i + 1]
                 new_end = min(new_end, next_word.start - WORD_OVERLAP_BUFFER)
-            
+
             # Don't extend beyond original end
             new_end = min(new_end, word.end)
-            
+
             corrected_word = Word(
                 word=word.word,
                 start=word.start,
                 end=max(word.start + MINIMUM_WORD_DURATION, new_end),
                 score=word.score,
-                status=word.status
+                status=word.status,
             )
             corrected_words.append(corrected_word)
         else:
             corrected_words.append(word)
-    
+
     return corrected_words
 
 
@@ -137,14 +129,14 @@ def _build_filler_patterns(fillers: list[str]) -> dict[str, re.Pattern]:
     patterns = {}
     for filler in fillers:
         variants = set([filler])
-        
+
         for base, vars_list in FILLER_VARIANTS.items():
             if filler == base or filler in vars_list:
                 variants.update([base] + vars_list)
-        
+
         pattern_str = r"^(?:" + "|".join(re.escape(v) for v in variants) + r")$"
         patterns[filler] = re.compile(pattern_str, re.IGNORECASE)
-    
+
     return patterns
 
 
@@ -167,9 +159,7 @@ def is_filler(word: str, filler_patterns: dict[str, re.Pattern]) -> bool:
 
 
 def classify_words(
-    words: list[Word],
-    language: str = "fr",
-    custom_fillers: Optional[list[str]] = None
+    words: list[Word], language: str = "fr", custom_fillers: list[str] | None = None
 ) -> list[Word]:
     """
     Classify each word as KEPT or FILLER.
@@ -197,11 +187,7 @@ def classify_words(
     return words
 
 
-def compute_cuts(
-    words: list[Word],
-    config: CutterConfig,
-    total_duration: float
-) -> list[Cut]:
+def compute_cuts(words: list[Word], config: CutterConfig, total_duration: float) -> list[Cut]:
     """
     Compute cuts based on classified words and gaps.
 
@@ -224,12 +210,14 @@ def compute_cuts(
     if not words:
         # No words = entire file is silence
         if total_duration > 0:
-            cuts.append(Cut(
-                start=0.0,
-                end=total_duration,
-                cut_type=CutType.SILENCE,
-                reason=CutReason.GAP_BEFORE_SPEECH
-            ))
+            cuts.append(
+                Cut(
+                    start=0.0,
+                    end=total_duration,
+                    cut_type=CutType.SILENCE,
+                    reason=CutReason.GAP_BEFORE_SPEECH,
+                )
+            )
         return cuts
 
     # Get kept words only (non-fillers)
@@ -239,33 +227,39 @@ def compute_cuts(
     # 1. Cut silences at the beginning (before first word)
     first_word = words[0]
     if first_word.start >= config.min_silence:
-        cuts.append(Cut(
-            start=0.0,
-            end=first_word.start,
-            cut_type=CutType.SILENCE,
-            reason=CutReason.GAP_BEFORE_SPEECH
-        ))
+        cuts.append(
+            Cut(
+                start=0.0,
+                end=first_word.start,
+                cut_type=CutType.SILENCE,
+                reason=CutReason.GAP_BEFORE_SPEECH,
+            )
+        )
 
     # 2. Cut silences at the end (after last word)
     last_word = words[-1]
     end_silence = total_duration - last_word.end
     if end_silence >= config.min_silence:
-        cuts.append(Cut(
-            start=last_word.end,
-            end=total_duration,
-            cut_type=CutType.SILENCE,
-            reason=CutReason.GAP_AFTER_SPEECH
-        ))
+        cuts.append(
+            Cut(
+                start=last_word.end,
+                end=total_duration,
+                cut_type=CutType.SILENCE,
+                reason=CutReason.GAP_AFTER_SPEECH,
+            )
+        )
 
     # 3. Cut filler words
     for filler in filler_words:
-        cuts.append(Cut(
-            start=filler.start,
-            end=filler.end,
-            cut_type=CutType.FILLER,
-            reason=CutReason.FILLER_WORD,
-            word=filler.word
-        ))
+        cuts.append(
+            Cut(
+                start=filler.start,
+                end=filler.end,
+                cut_type=CutType.FILLER,
+                reason=CutReason.FILLER_WORD,
+                word=filler.word,
+            )
+        )
 
     # 4. Cut gaps after fillers (if enabled)
     if config.gap_after_filler:
@@ -281,12 +275,14 @@ def compute_cuts(
 
                 # Only cut if there's an actual gap
                 if gap_duration > MINIMUM_GAP_THRESHOLD:
-                    cuts.append(Cut(
-                        start=gap_start,
-                        end=gap_end,
-                        cut_type=CutType.GAP,
-                        reason=CutReason.GAP_AFTER_FILLER
-                    ))
+                    cuts.append(
+                        Cut(
+                            start=gap_start,
+                            end=gap_end,
+                            cut_type=CutType.GAP,
+                            reason=CutReason.GAP_AFTER_FILLER,
+                        )
+                    )
 
     # 5. Cut gaps between segments (use min_gap_cut: threshold for gaps between any two words)
     for i in range(len(words) - 1):
@@ -295,12 +291,14 @@ def compute_cuts(
         gap_duration = next_word.start - current.end
 
         if gap_duration >= config.min_gap_cut:
-            cuts.append(Cut(
-                start=current.end,
-                end=next_word.start,
-                cut_type=CutType.SILENCE,
-                reason=CutReason.GAP_BETWEEN_SEGMENTS
-            ))
+            cuts.append(
+                Cut(
+                    start=current.end,
+                    end=next_word.start,
+                    cut_type=CutType.SILENCE,
+                    reason=CutReason.GAP_BETWEEN_SEGMENTS,
+                )
+            )
 
     # 6. Merge adjacent cuts
     cuts = merge_adjacent_cuts(cuts)
@@ -308,10 +306,7 @@ def compute_cuts(
     return cuts
 
 
-def compute_keep_segments(
-    cuts: list[Cut],
-    total_duration: float
-) -> list[KeepSegment]:
+def compute_keep_segments(cuts: list[Cut], total_duration: float) -> list[KeepSegment]:
     """
     Compute segments to keep from cuts (complement of cuts).
 
@@ -351,8 +346,8 @@ def run_pipeline(
     whisperx_path: Path,
     total_duration: float,
     language: str = "fr",
-    custom_fillers: Optional[list[str]] = None,
-    config: Optional[CutterConfig] = None,
+    custom_fillers: list[str] | None = None,
+    config: CutterConfig | None = None,
 ) -> CutterResult:
     """
     Run the full cutting pipeline from WhisperX JSON.
@@ -371,7 +366,7 @@ def run_pipeline(
         config = CutterConfig()
 
     # Load WhisperX data
-    with open(whisperx_path, "r", encoding="utf-8") as f:
+    with open(whisperx_path, encoding="utf-8") as f:
         data = json.load(f)
 
     # Extract word_segments (source of truth); fallback: build from segments[].words
@@ -384,12 +379,14 @@ def run_pipeline(
     words = []
     for i, ws in enumerate(word_segments):
         try:
-            words.append(Word(
-                word=str(ws.get("word", "")),
-                start=float(ws["start"]),
-                end=float(ws["end"]),
-                score=float(ws.get("score", 1.0)),
-            ))
+            words.append(
+                Word(
+                    word=str(ws.get("word", "")),
+                    start=float(ws["start"]),
+                    end=float(ws["end"]),
+                    score=float(ws.get("score", 1.0)),
+                )
+            )
         except (KeyError, TypeError, ValueError) as e:
             raise ValidationError(
                 f"Invalid word segment at index {i} in {whisperx_path}: each entry must have 'start' and 'end' (numbers). {e}"

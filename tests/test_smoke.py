@@ -1,6 +1,5 @@
 """Smoke tests to verify module imports work correctly."""
 
-import pytest
 
 
 class TestModuleImports:
@@ -8,7 +7,8 @@ class TestModuleImports:
 
     def test_import_models(self):
         """Test importing models module."""
-        from derush.models import MediaInfo, Segment, Word, Cut
+        from derush.models import Cut, MediaInfo, Segment, Word
+
         assert MediaInfo is not None
         assert Segment is not None
         assert Word is not None
@@ -17,16 +17,19 @@ class TestModuleImports:
     def test_import_media_info(self):
         """Test importing media_info module."""
         from derush.media_info import get_media_info
+
         assert get_media_info is not None
 
     def test_import_transcriber(self):
         """Test importing transcriber module."""
         from derush.transcriber import transcribe
+
         assert transcribe is not None
 
     def test_import_cutter(self):
         """Test importing cutter module."""
-        from derush.cutter import run_pipeline, classify_words, compute_cuts
+        from derush.cutter import classify_words, compute_cuts, run_pipeline
+
         assert run_pipeline is not None
         assert classify_words is not None
         assert compute_cuts is not None
@@ -44,4 +47,5 @@ class TestModuleImports:
     def test_import_cli(self):
         """Test importing CLI module."""
         from derush.cli import app
+
         assert app is not None

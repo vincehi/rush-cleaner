@@ -2,14 +2,13 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from derush import __version__
 from derush.config import CutterConfig
 from derush.cutter import run_pipeline
-from derush.exceptions import DerushError, TranscriptionError, MediaInfoError
+from derush.exceptions import DerushError, ExportError, MediaInfoError, TranscriptionError
 from derush.exporters import JSONExporter, get_fcpxml_exporter
 from derush.media_info import get_media_info
 from derush.transcriber import transcribe
@@ -40,88 +39,67 @@ def version_callback(value: bool) -> None:
 
 app = typer.Typer(
     name="derush",
-    help="Video derushing tool - automatically detect silences and filler words for video editing"
+    help="Video derushing tool - automatically detect silences and filler words for video editing",
 )
 
 
 @app.command()
 def main(
     input_file: Path = typer.Argument(
-        ...,
-        exists=True,
-        help="Input video or audio file (mp4, mov, mkv, wav, mp3)"
+        ..., exists=True, help="Input video or audio file (mp4, mov, mkv, wav, mp3)"
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
-        "--output", "-o",
-        help="Output file path (default: same as input with appropriate extension)"
+        "--output",
+        "-o",
+        help="Output file path (default: next to input file, same stem with .fcpxml or .json)",
     ),
     output_format: str = typer.Option(
-        "fcpxml",
-        "--format", "-f",
-        help="Output format: fcpxml or json"
+        "fcpxml", "--format", "-f", help="Output format: fcpxml or json"
     ),
-    language: Optional[str] = typer.Option(
+    language: str | None = typer.Option(
         None,
-        "--lang", "-l",
-        help="Language code (fr, en). Auto-detected if not specified."
+        "--lang",
+        "-l",
+        help="Language code (fr, en). Auto-detected if not specified; fallback for fillers: en.",
     ),
     min_silence: float = typer.Option(
-        0.5,
-        "--min-silence",
-        help="Minimum silence duration in seconds to cut"
+        0.5, "--min-silence", help="Minimum silence duration in seconds to cut"
     ),
     min_gap: float = typer.Option(
         0.3,
         "--min-gap",
-        help="Minimum gap between words to cut (smaller gaps are kept for natural flow)"
+        help="Minimum gap between words to cut (smaller gaps are kept for natural flow)",
     ),
-    fillers: Optional[str] = typer.Option(
-        None,
-        "--fillers",
-        help="Custom filler words (comma-separated)"
+    fillers: str | None = typer.Option(
+        None, "--fillers", help="Custom filler words (comma-separated)"
     ),
-    fps: Optional[float] = typer.Option(
-        None,
-        "--fps",
-        help="Override FPS (auto-detected from video by default)"
+    fps: float | None = typer.Option(
+        None, "--fps", help="Override FPS (auto-detected from video by default)"
     ),
     model: str = typer.Option(
-        "base",
-        "--model", "-m",
-        help="Whisper model size: tiny, base, small, medium, large"
+        "base", "--model", "-m", help="Whisper model size: tiny, base, small, medium, large"
     ),
-    device: str = typer.Option(
-        "cpu",
-        "--device",
-        help="Device for transcription: cpu or cuda"
-    ),
+    device: str = typer.Option("cpu", "--device", help="Device for transcription: cpu or cuda"),
     chunk_size: int = typer.Option(
         15,
         "--chunk-size",
-        help="Max VAD chunk size in seconds (smaller = more segments, better filler detection)"
+        help="Max VAD chunk size in seconds (smaller = more segments, better filler detection)",
     ),
     vad: str = typer.Option(
-        "pyannote",
-        "--vad",
-        help="VAD backend (same as WhisperX): pyannote or silero"
+        "pyannote", "--vad", help="VAD backend (same as WhisperX): pyannote or silero"
     ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose", "-v",
-        help="Show detailed cutting decisions"
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed cutting decisions"),
     preview: bool = typer.Option(
-        False,
-        "--preview",
-        help="Show summary without generating files (dry-run)"
+        False, "--preview", help="Show summary without generating files (dry-run)"
     ),
     version: bool = typer.Option(
         False,
         "--version",
+        "-V",
         callback=version_callback,
         is_eager=True,
-        help="Show version and exit"
+        help="Show version and exit",
     ),
 ):
     """
@@ -144,6 +122,28 @@ def main(
         typer.echo(f"Invalid vad_method: {vad}", err=True)
         raise typer.Exit(1)
 
+    # Validate numeric options
+    if not (1 <= chunk_size <= 120):
+        error_msg = f"chunk_size must be between 1 and 120 (got {chunk_size})"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
+        raise typer.Exit(1)
+    if fps is not None and not (1 <= fps <= 120):
+        error_msg = f"--fps must be between 1 and 120 (got {fps})"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
+        raise typer.Exit(1)
+    if min_silence <= 0 or min_silence > 60:
+        error_msg = f"min-silence must be > 0 and <= 60 seconds (got {min_silence})"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
+        raise typer.Exit(1)
+    if min_gap <= 0 or min_gap > 30:
+        error_msg = f"min-gap must be > 0 and <= 30 seconds (got {min_gap})"
+        typer.echo(error_msg, err=True)
+        logger.error(error_msg)
+        raise typer.Exit(1)
+
     # Get media info
     typer.echo(f"Analyzing media file: {input_file}")
     fallback_fps = fps if fps else 25.0
@@ -152,7 +152,7 @@ def main(
     except MediaInfoError as e:
         typer.echo(f"Media info extraction failed: {e}", err=True)
         logger.error(f"Media info extraction failed: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # Override FPS if specified
     if fps:
@@ -170,14 +170,9 @@ def main(
     typer.echo("\nTranscribing audio...")
     custom_fillers = [f.strip() for f in fillers.split(",")] if fillers else None
 
-    # Determine output directory for WhisperX result
-    if output:
-        output_dir = output.parent
-        whisperx_output = output_dir / f"{input_file.stem}_whisperx.json"
-    else:
-        output_dir = Path.cwd() / "output"
-        output_dir.mkdir(exist_ok=True)
-        whisperx_output = output_dir / f"{input_file.stem}_whisperx.json"
+    # Output directory: next to input file when output not specified
+    output_dir = output.parent if output else input_file.parent
+    whisperx_output = output_dir / f"{input_file.stem}_whisperx.json"
 
     try:
         segments = transcribe(
@@ -192,11 +187,11 @@ def main(
     except (RuntimeError, TranscriptionError) as e:
         typer.echo(f"Transcription failed: {e}", err=True)
         logger.error(f"Transcription failed: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except DerushError as e:
         typer.echo(f"Error: {e}", err=True)
         logger.error(f"Error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     typer.echo(f"  Found {len(segments)} segments")
     typer.echo(f"  WhisperX output saved to: {whisperx_output}")
@@ -208,8 +203,8 @@ def main(
         gap_after_filler=True,
     )
 
-    # Determine language (fallback to fr if not specified)
-    detected_language = language if language else "fr"
+    # Language for fillers: user-specified or fallback to English
+    detected_language = language if language else "en"
 
     # Run cutting pipeline
     typer.echo(f"\nRunning cutting pipeline (language: {detected_language})...")
@@ -232,15 +227,19 @@ def main(
         typer.echo("\nCuts:")
         for c in result.cuts:
             word_info = f" ({c.word})" if c.word else ""
-            typer.echo(f"  [{c.start:.3f}-{c.end:.3f}] {c.cut_type.value}: {c.reason.value}{word_info}")
+            typer.echo(
+                f"  [{c.start:.3f}-{c.end:.3f}] {c.cut_type.value}: {c.reason.value}{word_info}"
+            )
 
         typer.echo("\nKeep segments:")
         for s in result.keep_segments:
             typer.echo(f"  [{s.start:.3f}-{s.end:.3f}] ({s.duration:.3f}s)")
 
     # Summary
-    typer.echo(f"\nSummary:")
-    typer.echo(f"  Words: {result.total_words} total ({result.kept_words} kept, {result.filler_words} fillers)")
+    typer.echo("\nSummary:")
+    typer.echo(
+        f"  Words: {result.total_words} total ({result.kept_words} kept, {result.filler_words} fillers)"
+    )
     typer.echo(f"  Cuts: {len(result.cuts)} sections")
     typer.echo(f"  Original duration: {result.original_duration:.1f}s")
     typer.echo(f"  Final duration: {result.final_duration:.1f}s")
@@ -251,9 +250,8 @@ def main(
         typer.echo("\n[Preview mode - no files generated]")
         raise typer.Exit()
 
-    # Determine output path
+    # Default output path: next to input file
     if output is None:
-        output_dir.mkdir(exist_ok=True)
         extension = {"fcpxml": ".fcpxml", "json": ".json"}[output_format]
         output = output_dir / f"{input_file.stem}{extension}"
 
@@ -265,11 +263,12 @@ def main(
     }
 
     exporter = exporters[output_format]
-    exporter.export(
-        result=result,
-        media_info=media_info,
-        output_path=output
-    )
+    try:
+        exporter.export(result=result, media_info=media_info, output_path=output)
+    except ExportError as e:
+        typer.echo(f"Export failed: {e}", err=True)
+        logger.error(f"Export failed: {e}")
+        raise typer.Exit(1) from e
 
     typer.echo(f"\nOutput saved to: {output}")
 

@@ -8,12 +8,12 @@ Une commande (installe [uv](https://docs.astral.sh/uv/) puis derush — pas beso
 
 **macOS / Linux :**
 ```bash
-curl -LsSf https://raw.githubusercontent.com/vincentsourice/derush/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.sh | sh
 ```
 
 **Windows (PowerShell) :**
 ```powershell
-irm https://raw.githubusercontent.com/vincentsourice/derush/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.ps1 | iex
 ```
 
 Ensuite : installer **FFmpeg** (requis pour lire les vidéos) — `brew install ffmpeg` (macOS), `apt install ffmpeg` (Linux), `winget install FFmpeg` (Windows).  
@@ -25,7 +25,7 @@ Si `derush` n'est pas trouvé : ajouter au PATH (`$HOME/.local/bin` sur macOS/Li
 derush ma_video.mp4
 ```
 
-Le fichier généré (FCPXML par défaut) s’importe dans DaVinci Resolve, FCP ou Premiere. Détail env. et commandes dev : **[PYTHON.md](PYTHON.md)**.
+Le fichier généré (FCPXML par défaut) est créé **à côté de la vidéo** (même dossier, même nom avec extension `.fcpxml`). Il s’importe dans DaVinci Resolve, FCP ou Premiere. Détail env. et commandes dev : **[PYTHON.md](PYTHON.md)**.
 
 ## Prérequis
 
@@ -59,22 +59,32 @@ derush video.mp4 --device cuda
 
 # Modele Whisper plus precis (plus lent)
 derush video.mp4 --model large
+
+# Apercu sans generer de fichier (dry-run)
+derush video.mp4 --preview
+
+# Logs detailles (decisions de coupe)
+derush video.mp4 --verbose
 ```
 
 ## Options
 
 | Option | Description | Defaut |
 |--------|-------------|--------|
+| `--output`, `-o` | Fichier de sortie | À côté de la vidéo (même nom, .fcpxml ou .json) |
 | `--format`, `-f` | Format de sortie (`fcpxml`, `json`) | `fcpxml` |
-| `--lang`, `-l` | Langue (`fr`, `en`) | auto-detection |
-| `--min-silence` | Duree min. silence (secondes) | `0.5` |
-| `--fillers` | Filler words personnalises | - |
-| `--fps` | Forcer le FPS | auto |
+| `--lang`, `-l` | Langue (`fr`, `en`). Si non spécifié : auto-détection, fallback fillers = en | auto |
+| `--min-silence` | Duree min. silence à couper (secondes) | `0.5` |
+| `--min-gap` | Duree min. entre mots pour couper un gap (secondes) | `0.3` |
+| `--fillers` | Filler words personnalises (virgule) | liste par langue |
+| `--preview` | Afficher le résumé sans générer de fichier | - |
+| `--verbose`, `-v` | Afficher les décisions de coupe (mots, segments) | - |
+| `--fps` | Forcer le FPS | auto (sinon 25) |
 | `--model`, `-m` | Modele Whisper (`tiny`, `base`, `small`, `medium`, `large`) | `base` |
 | `--vad` | VAD : `pyannote` ou `silero` (silero évite le warning torchcodec) | `pyannote` |
+| `--chunk-size` | Taille max des segments VAD (secondes) ; plus petit = plus de segments | `15` |
 | `--device` | Appareil (`cpu`, `cuda`) | `cpu` |
-| `--output`, `-o` | Fichier de sortie | auto |
-| `--version`, `-v` | Afficher la version | - |
+| `--version`, `-V` | Afficher la version et quitter | - |
 
 ## Formats de sortie
 
@@ -93,11 +103,11 @@ Pour debug ou integrations personnalisees.
 
 ## Filler words (par défaut)
 
-Liste définie dans `derush.config.DEFAULT_FILLERS` :
+Liste définie dans `derush.config.DEFAULT_FILLERS` selon la langue :
 
-**Français** : euh, ben, bah, hmm, bon ben (et variantes)
+**Français** (`--lang fr`) : euh, ben, bah, hmm, bon ben (et variantes)
 
-**Anglais** : um, uh, hmm (et variantes)
+**Anglais** (`--lang en` ou non spécifié) : um, uh, hmm (et variantes)
 
 Pour en ajouter (ex. « du coup », « tu vois », « like ») : `--fillers "du coup,tu vois"`.
 

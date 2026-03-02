@@ -2,13 +2,12 @@
 
 import json
 import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from derush.exceptions import MediaInfoError
-from derush.media_info import get_media_info, parse_fps_rational, _parse_frame_rate
+from derush.media_info import _parse_frame_rate, get_media_info, parse_fps_rational
 from derush.models import MediaInfo
 
 
@@ -103,15 +102,11 @@ class TestGetMediaInfo:
                     "codec_type": "video",
                     "avg_frame_rate": "30000/1001",
                     "width": 1920,
-                    "height": 1080
+                    "height": 1080,
                 },
-                {
-                    "codec_type": "audio"
-                }
+                {"codec_type": "audio"},
             ],
-            "format": {
-                "duration": "120.5"
-            }
+            "format": {"duration": "120.5"},
         }
 
         mock_result = MagicMock()
@@ -170,16 +165,7 @@ class TestGetMediaInfo:
         test_file = tmp_path / "test.mp3"
         test_file.touch()
 
-        ffprobe_output = {
-            "streams": [
-                {
-                    "codec_type": "audio"
-                }
-            ],
-            "format": {
-                "duration": "60.0"
-            }
-        }
+        ffprobe_output = {"streams": [{"codec_type": "audio"}], "format": {"duration": "60.0"}}
 
         mock_result = MagicMock()
         mock_result.stdout = json.dumps(ffprobe_output)
@@ -203,9 +189,7 @@ class TestGetMediaInfo:
         test_file.touch()
 
         mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1,
-            cmd=["ffprobe"],
-            stderr="Error: invalid file"
+            returncode=1, cmd=["ffprobe"], stderr="Error: invalid file"
         )
 
         with pytest.raises(MediaInfoError, match="ffprobe failed"):
@@ -225,7 +209,7 @@ class TestMediaInfoMethods:
             width=1920,
             height=1080,
             has_video=True,
-            file_path="/path/to/video.mp4"
+            file_path="/path/to/video.mp4",
         )
 
     def test_total_frames(self, media_info):
@@ -252,7 +236,7 @@ class TestMediaInfoMethods:
             width=1920,
             height=1080,
             has_video=True,
-            file_path="/path/to/video.mp4"
+            file_path="/path/to/video.mp4",
         )
 
         # Drop-frame uses semicolon before frames

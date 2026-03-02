@@ -2,24 +2,21 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from derush.exceptions import TranscriptionError
 from derush.models import Segment, Word
 
 # Hotwords to bias Whisper toward transcribing filler words (improves detection)
-FILLER_HOTWORDS = (
-    "hmm euh um uh ben quoi bah du coup en fait bon tu vois like you know"
-)
+FILLER_HOTWORDS = "hmm euh um uh ben quoi bah du coup en fait bon tu vois like you know"
 
 
 def transcribe(
     file_path: Path,
-    language: Optional[str] = None,
+    language: str | None = None,
     model_size: str = "base",
     device: str = "cpu",
     chunk_size: int = 15,
-    whisperx_output: Optional[Path] = None,
+    whisperx_output: Path | None = None,
     vad_method: str = "pyannote",
 ) -> list[Segment]:
     """
@@ -61,7 +58,7 @@ def transcribe(
     # Options to improve filler word transcription (see WhisperX/faster-whisper docs)
     asr_options = {
         "hotwords": FILLER_HOTWORDS,  # bias model toward transcribing these words
-        "no_speech_threshold": 0.5,   # keep short segments (default 0.6 can drop fillers)
+        "no_speech_threshold": 0.5,  # keep short segments (default 0.6 can drop fillers)
     }
     vad_options = {"chunk_size": chunk_size}
 
@@ -89,16 +86,10 @@ def transcribe(
     # Align for word-level timestamps (can fail for unsupported language or missing model)
     try:
         model_a, metadata = whisperx.load_align_model(
-            language_code=detected_language,
-            device=device
+            language_code=detected_language, device=device
         )
         result = whisperx.align(
-            result["segments"],
-            model_a,
-            metadata,
-            audio,
-            device,
-            return_char_alignments=False
+            result["segments"], model_a, metadata, audio, device, return_char_alignments=False
         )
     except (ValueError, RuntimeError, OSError) as e:
         raise TranscriptionError(
@@ -121,18 +112,22 @@ def transcribe(
     for seg in result.get("segments", []):
         words = []
         for w in seg.get("words", []):
-            words.append(Word(
-                word=w.get("word", ""),
-                start=w.get("start", 0.0),
-                end=w.get("end", 0.0),
-                score=w.get("score", 0.0)
-            ))
+            words.append(
+                Word(
+                    word=w.get("word", ""),
+                    start=w.get("start", 0.0),
+                    end=w.get("end", 0.0),
+                    score=w.get("score", 0.0),
+                )
+            )
 
-        segments.append(Segment(
-            start=seg.get("start", 0.0),
-            end=seg.get("end", 0.0),
-            text=seg.get("text", "").strip(),
-            words=words
-        ))
+        segments.append(
+            Segment(
+                start=seg.get("start", 0.0),
+                end=seg.get("end", 0.0),
+                text=seg.get("text", "").strip(),
+                words=words,
+            )
+        )
 
     return segments

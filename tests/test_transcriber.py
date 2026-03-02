@@ -1,13 +1,11 @@
 """Tests for transcriber module."""
 
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from derush.exceptions import TranscriptionError
-from derush.models import Segment, Word
+from derush.models import Segment
 from derush.transcriber import transcribe
 
 
@@ -45,11 +43,11 @@ class TestTranscribe:
                     "text": "Hello world",
                     "words": [
                         {"word": "Hello", "start": 0.0, "end": 0.5, "score": 0.9},
-                        {"word": "world", "start": 0.6, "end": 1.0, "score": 0.8}
-                    ]
+                        {"word": "world", "start": 0.6, "end": 1.0, "score": 0.8},
+                    ],
                 }
             ],
-            "language": "en"
+            "language": "en",
         }
 
         # Mock alignment
@@ -62,8 +60,8 @@ class TestTranscribe:
                     "text": "Hello world",
                     "words": [
                         {"word": "Hello", "start": 0.0, "end": 0.5, "score": 0.9},
-                        {"word": "world", "start": 0.6, "end": 1.0, "score": 0.8}
-                    ]
+                        {"word": "world", "start": 0.6, "end": 1.0, "score": 0.8},
+                    ],
                 }
             ]
         }
@@ -101,10 +99,7 @@ class TestTranscribe:
         mock_whisperx.load_model.return_value = mock_model
         mock_whisperx.load_audio.return_value = MagicMock()
 
-        mock_model.transcribe.return_value = {
-            "segments": [],
-            "language": "en"
-        }
+        mock_model.transcribe.return_value = {"segments": [], "language": "en"}
 
         mock_whisperx.load_align_model.return_value = (MagicMock(), MagicMock())
         mock_whisperx.align.return_value = {
@@ -115,8 +110,8 @@ class TestTranscribe:
                     "text": "Test sentence",
                     "words": [
                         {"word": "Test", "start": 0.0, "end": 0.5, "score": 0.95},
-                        {"word": "sentence", "start": 0.6, "end": 1.2, "score": 0.92}
-                    ]
+                        {"word": "sentence", "start": 0.6, "end": 1.2, "score": 0.92},
+                    ],
                 }
             ]
         }
@@ -143,7 +138,7 @@ class TestTranscribe:
 
         mock_model.transcribe.return_value = {
             "segments": [],
-            "language": "fr"  # Auto-detected French
+            "language": "fr",  # Auto-detected French
         }
 
         mock_whisperx.load_align_model.return_value = (MagicMock(), MagicMock())
@@ -181,10 +176,7 @@ class TestTranscribe:
         mock_whisperx.load_model.return_value = mock_model
         mock_whisperx.load_audio.return_value = MagicMock()
 
-        mock_model.transcribe.return_value = {
-            "segments": [],
-            "language": "en"
-        }
+        mock_model.transcribe.return_value = {"segments": [], "language": "en"}
 
         mock_whisperx.load_align_model.return_value = (MagicMock(), MagicMock())
         mock_whisperx.align.return_value = {"segments": []}

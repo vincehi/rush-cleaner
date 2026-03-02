@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from derush.exceptions import ExportError
 from derush.exporters.base import BaseExporter
 from derush.models import CutterResult, MediaInfo
 
@@ -44,10 +45,10 @@ class JSONExporter(BaseExporter):
                         "start": w.start,
                         "end": w.end,
                         "score": w.score,
-                        "status": w.status.value
+                        "status": w.status.value,
                     }
                     for w in result.words
-                ]
+                ],
             },
             "cuts": [
                 {
@@ -56,16 +57,12 @@ class JSONExporter(BaseExporter):
                     "duration": round(c.end - c.start, 3),
                     "type": c.cut_type.value,
                     "reason": c.reason.value,
-                    **({"word": c.word} if c.word else {})
+                    **({"word": c.word} if c.word else {}),
                 }
                 for c in self.sort_cuts_chronologically(result.cuts)
             ],
             "keep_segments": [
-                {
-                    "start": s.start,
-                    "end": s.end,
-                    "duration": round(s.duration, 3)
-                }
+                {"start": s.start, "end": s.end, "duration": round(s.duration, 3)}
                 for s in self.sort_keep_segments_chronologically(result.keep_segments)
             ],
             "summary": {
@@ -76,10 +73,10 @@ class JSONExporter(BaseExporter):
                 "fillers_cut": result.filler_words,
                 "silences_cut": sum(1 for c in result.cuts if c.cut_type.value == "silence"),
                 "gaps_cut": sum(1 for c in result.cuts if c.cut_type.value == "gap"),
-            }
+            },
         }
 
         try:
             output_path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
         except OSError as e:
-            raise RuntimeError(f"Failed to write JSON file: {e}")
+            raise ExportError(f"Failed to write JSON file: {e}") from e

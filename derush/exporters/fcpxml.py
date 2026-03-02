@@ -5,6 +5,7 @@ from pathlib import Path
 
 from lxml import etree
 
+from derush.exceptions import ExportError
 from derush.exporters.base import BaseExporter
 from derush.media_info import parse_fps_rational
 from derush.models import CutterResult, MediaInfo
@@ -57,7 +58,7 @@ class FCPXMLExporter(BaseExporter):
             name=f"FFVideoFormat{media_info.width}x{media_info.height}",
             frameDuration=f"{fps_den}/{fps_num}s",
             width=str(media_info.width),
-            height=str(media_info.height)
+            height=str(media_info.height),
         )
 
         # Single asset for the source file — use media-rep child (DaVinci/Resolve style).
@@ -161,10 +162,10 @@ class FCPXMLExporter(BaseExporter):
                 pretty_print=True,
                 xml_declaration=True,
                 encoding="UTF-8",
-                doctype="<!DOCTYPE fcpxml>"
+                doctype="<!DOCTYPE fcpxml>",
             )
         except OSError as e:
-            raise RuntimeError(f"Failed to write FCPXML file: {e}") from e
+            raise ExportError(f"Failed to write FCPXML file: {e}") from e
 
     def _seconds_to_frames(self, seconds: float, fps_num: int, fps_den: int) -> int:
         """Convert seconds to number of frames (rounded)."""

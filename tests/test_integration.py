@@ -1,6 +1,5 @@
 """Integration tests for derush tool."""
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,8 +7,8 @@ import pytest
 from derush.exporters.fcpxml import FCPXMLExporter
 from derush.models import (
     Cut,
-    CutterResult,
     CutReason,
+    CutterResult,
     CutType,
     KeepSegment,
     MediaInfo,
@@ -28,7 +27,7 @@ def sample_media_info():
         width=1920,
         height=1080,
         has_video=True,
-        file_path="/path/to/video.mp4"
+        file_path="/path/to/video.mp4",
     )
 
 
@@ -70,7 +69,7 @@ def mock_whisperx():
             {"word": "hmm", "start": 2.5, "end": 3.0, "score": 0.24},
             {"word": "je", "start": 3.0, "end": 3.5, "score": 0.96},
             {"word": "pense", "start": 3.5, "end": 4.0, "score": 0.98},
-        ]
+        ],
     }
 
     return mock_whisperx
@@ -91,8 +90,20 @@ def cutter_result():
             Word(word="pense", start=3.5, end=4.0, score=0.98, status=WordStatus.KEPT),
         ],
         cuts=[
-            Cut(start=0.5, end=1.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"),
-            Cut(start=2.5, end=3.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="hmm"),
+            Cut(
+                start=0.5,
+                end=1.0,
+                cut_type=CutType.FILLER,
+                reason=CutReason.FILLER_WORD,
+                word="euh",
+            ),
+            Cut(
+                start=2.5,
+                end=3.0,
+                cut_type=CutType.FILLER,
+                reason=CutReason.FILLER_WORD,
+                word="hmm",
+            ),
         ],
         keep_segments=[
             KeepSegment(start=0.0, end=0.5),
@@ -131,8 +142,9 @@ class TestCutterPipeline:
         for i in range(len(cuts) - 1):
             current = cuts[i]
             next_cut = cuts[i + 1]
-            assert current.end <= next_cut.start, \
+            assert current.end <= next_cut.start, (
                 f"Cuts overlap: [{current.start}, {current.end}] and [{next_cut.start}, {next_cut.end}]"
+            )
 
 
 class TestFCPXMLOutput:
@@ -149,11 +161,13 @@ class TestFCPXMLOutput:
 
         # Count asset-clip elements in spine (one per keep segment)
         import re
+
         clips = re.findall(r'<asset-clip[^>]*name="Keep \d+"', content)
 
         # One clip per keep segment (single asset = proper stereo)
-        assert len(clips) == len(cutter_result.keep_segments), \
+        assert len(clips) == len(cutter_result.keep_segments), (
             f"FCPXML has {len(clips)} clips but expected {len(cutter_result.keep_segments)} keep segments"
+        )
 
     def test_fcpxml_sequence_duration(self, cutter_result, sample_media_info, tmp_path):
         """FCPXML sequence duration should match final_duration."""
@@ -166,6 +180,7 @@ class TestFCPXMLOutput:
 
         # Find sequence duration attribute
         import re
+
         match = re.search(r'sequence[^>]*duration="(\d+)/(\d+)s"', content)
         if match:
             numerator = int(match.group(1))
@@ -173,8 +188,9 @@ class TestFCPXMLOutput:
             sequence_duration = numerator / denominator
 
             # Allow small tolerance due to frame rounding
-            assert abs(sequence_duration - cutter_result.final_duration) < 0.1, \
+            assert abs(sequence_duration - cutter_result.final_duration) < 0.1, (
                 f"Sequence duration {sequence_duration}s doesn't match final_duration {cutter_result.final_duration}s"
+            )
 
     def test_fcpxml_asset_path_exists(self, cutter_result, sample_media_info, tmp_path):
         """FCPXML asset src should point to file URI."""
@@ -187,6 +203,7 @@ class TestFCPXMLOutput:
 
         # Extract file path from src attribute
         import re
+
         match = re.search(r'src="file://([^"]+)"', content)
         if match:
             assert "video.mp4" in match.group(1), f"Asset path doesn't match: {match.group(1)}"

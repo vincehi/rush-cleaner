@@ -7,11 +7,10 @@ These tests verify that:
 4. Fillers are included in cuts
 """
 
-import pytest
 
 from derush.config import CutterConfig
-from derush.models import Word, WordStatus, Cut, CutType, CutReason
 from derush.cutter import compute_cuts, merge_adjacent_cuts
+from derush.models import Cut, CutReason, CutType, Word, WordStatus
 
 
 class TestNoOverlappingCuts:
@@ -22,16 +21,25 @@ class TestNoOverlappingCuts:
         # Create overlapping cuts
         cuts = [
             Cut(start=0.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
-            Cut(start=1.5, end=3.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"),
-            Cut(start=4.0, end=5.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+            Cut(
+                start=1.5,
+                end=3.0,
+                cut_type=CutType.FILLER,
+                reason=CutReason.FILLER_WORD,
+                word="euh",
+            ),
+            Cut(
+                start=4.0, end=5.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+            ),
         ]
 
         merged = merge_adjacent_cuts(cuts)
 
         # Check no overlaps
         for i in range(len(merged) - 1):
-            assert merged[i].end <= merged[i + 1].start, \
+            assert merged[i].end <= merged[i + 1].start, (
                 f"Cuts overlap: [{merged[i].start}, {merged[i].end}] and [{merged[i + 1].start}, {merged[i + 1].end}]"
+            )
 
     def test_compute_cuts_produces_no_overlaps(self):
         """compute_cuts should produce non-overlapping cuts."""
@@ -48,8 +56,9 @@ class TestNoOverlappingCuts:
 
         # Check no overlaps
         for i in range(len(cuts) - 1):
-            assert cuts[i].end <= cuts[i + 1].start, \
+            assert cuts[i].end <= cuts[i + 1].start, (
                 f"Cuts overlap: [{cuts[i].start}, {cuts[i].end}] and [{cuts[i + 1].start}, {cuts[i + 1].end}]"
+            )
 
     def test_adjacent_cuts_are_merged(self):
         """Adjacent cuts (end == start) should be merged."""
@@ -120,7 +129,9 @@ class TestCutsSorted:
         """Merged cuts must be sorted by start time."""
         # Unsorted input
         cuts = [
-            Cut(start=5.0, end=6.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+            Cut(
+                start=5.0, end=6.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+            ),
             Cut(start=0.0, end=1.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
             Cut(start=2.0, end=3.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
         ]
@@ -148,11 +159,10 @@ class TestFillersInCuts:
         filler = next(w for w in words if w.status == WordStatus.FILLER)
 
         # Check that filler is covered by at least one cut
-        covered = any(
-            cut.start <= filler.start and cut.end >= filler.end
-            for cut in cuts
+        covered = any(cut.start <= filler.start and cut.end >= filler.end for cut in cuts)
+        assert covered, (
+            f"Filler '{filler.word}' at [{filler.start}, {filler.end}] is not covered by any cut"
         )
-        assert covered, f"Filler '{filler.word}' at [{filler.start}, {filler.end}] is not covered by any cut"
 
     def test_multiple_fillers_all_covered(self):
         """All filler words must be covered by cuts."""
@@ -171,11 +181,10 @@ class TestFillersInCuts:
         filler_words = [w for w in words if w.status == WordStatus.FILLER]
 
         for filler in filler_words:
-            covered = any(
-                cut.start <= filler.start and cut.end >= filler.end
-                for cut in cuts
+            covered = any(cut.start <= filler.start and cut.end >= filler.end for cut in cuts)
+            assert covered, (
+                f"Filler '{filler.word}' at [{filler.start}, {filler.end}] is not covered"
             )
-            assert covered, f"Filler '{filler.word}' at [{filler.start}, {filler.end}] is not covered"
 
     def test_sample_hmm_in_cut(self):
         """Test that 'hmm' from sample is in a cut."""
@@ -190,10 +199,7 @@ class TestFillersInCuts:
 
         hmm = next(w for w in words if w.word == "hmm")
 
-        covered = any(
-            cut.start <= hmm.start and cut.end >= hmm.end
-            for cut in cuts
-        )
+        covered = any(cut.start <= hmm.start and cut.end >= hmm.end for cut in cuts)
         assert covered, "'hmm' should be covered by a cut"
 
 
@@ -232,7 +238,13 @@ class TestCutTypes:
         """Merged cuts with different types should have type MIXED."""
         cuts = [
             Cut(start=0.0, end=1.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
-            Cut(start=1.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"),
+            Cut(
+                start=1.0,
+                end=2.0,
+                cut_type=CutType.FILLER,
+                reason=CutReason.FILLER_WORD,
+                word="euh",
+            ),
         ]
 
         merged = merge_adjacent_cuts(cuts)

@@ -4,7 +4,6 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from derush.exceptions import MediaInfoError
 from derush.models import MediaInfo
@@ -36,11 +35,13 @@ def get_media_info(file_path: Path, fallback_fps: float = 25.0) -> MediaInfo:
     # Run ffprobe to get stream information
     cmd = [
         ffprobe_path,
-        "-v", "quiet",
-        "-print_format", "json",
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
         "-show_streams",
         "-show_format",
-        str(file_path)
+        str(file_path),
     ]
 
     try:
@@ -54,11 +55,7 @@ def get_media_info(file_path: Path, fallback_fps: float = 25.0) -> MediaInfo:
     return _parse_ffprobe_output(file_path, data, fallback_fps)
 
 
-def _parse_ffprobe_output(
-    file_path: Path,
-    data: dict,
-    fallback_fps: float
-) -> MediaInfo:
+def _parse_ffprobe_output(file_path: Path, data: dict, fallback_fps: float) -> MediaInfo:
     """Parse ffprobe JSON output into MediaInfo."""
     streams = data.get("streams", [])
     format_info = data.get("format", {})
@@ -78,9 +75,9 @@ def _parse_ffprobe_output(
 
     has_video = video_stream is not None
 
-    nb_frames: Optional[int] = None
-    audio_sample_rate: Optional[int] = None
-    audio_channels: Optional[int] = None
+    nb_frames: int | None = None
+    audio_sample_rate: int | None = None
+    audio_channels: int | None = None
     if has_video:
         # Extract FPS and frame count from video stream (nb_frames avoids FCPXML "media offline")
         fps_rational = video_stream.get("avg_frame_rate", "25/1")

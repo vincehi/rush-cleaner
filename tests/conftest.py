@@ -4,7 +4,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from derush.models import Cut, CutterResult, CutType, CutReason, KeepSegment, MediaInfo, Word, WordStatus
+from derush.models import (
+    Cut,
+    CutReason,
+    CutterResult,
+    CutType,
+    KeepSegment,
+    MediaInfo,
+    Word,
+    WordStatus,
+)
 
 
 @pytest.fixture
@@ -17,7 +26,7 @@ def sample_media_info():
         width=1920,
         height=1080,
         has_video=True,
-        file_path="/path/to/video.mp4"
+        file_path="/path/to/video.mp4",
     )
 
 
@@ -31,7 +40,7 @@ def sample_media_info_2997():
         width=1920,
         height=1080,
         has_video=True,
-        file_path="/path/to/video.mp4"
+        file_path="/path/to/video.mp4",
     )
 
 
@@ -40,7 +49,9 @@ def sample_cuts():
     """Create sample cuts for testing."""
     return [
         Cut(start=2.0, end=3.2, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
-        Cut(start=15.0, end=15.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"),
+        Cut(
+            start=15.0, end=15.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD, word="euh"
+        ),
         Cut(start=5.0, end=6.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
     ]
 
@@ -101,7 +112,7 @@ def sample_segments():
                 {"word": "est", "start": 1.0, "end": 1.2},
                 {"word": "un", "start": 1.3, "end": 1.5},
                 {"word": "test", "start": 1.6, "end": 2.0},
-            ]
+            ],
         },
         {
             "start": 7.0,
@@ -113,6 +124,6 @@ def sample_segments():
                 {"word": "une", "start": 8.1, "end": 8.3},
                 {"word": "deuxième", "start": 8.4, "end": 9.0},
                 {"word": "phrase", "start": 9.1, "end": 9.5},
-            ]
+            ],
         },
     ]

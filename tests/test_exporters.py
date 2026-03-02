@@ -1,7 +1,6 @@
 """Tests for exporter modules."""
 
 import json
-from pathlib import Path
 
 import pytest
 from lxml import etree
@@ -84,7 +83,9 @@ class TestFCPXMLExporter:
         refs = {c.get("ref") for c in asset_clips}
         assert refs == {"r2"}
 
-    def test_export_keep_segments_chronological(self, tmp_path, sample_cutter_result, sample_media_info):
+    def test_export_keep_segments_chronological(
+        self, tmp_path, sample_cutter_result, sample_media_info
+    ):
         """Test that keep segments are in chronological order on timeline."""
         output_path = tmp_path / "output.fcpxml"
 
@@ -103,7 +104,9 @@ class TestFCPXMLExporter:
         # Accept both "0s" and "0/Xs" format (rational time)
         assert offset == "0s" or offset.startswith("0/")
 
-    def test_export_no_timeline_discontinuities(self, tmp_path, sample_cutter_result, sample_media_info):
+    def test_export_no_timeline_discontinuities(
+        self, tmp_path, sample_cutter_result, sample_media_info
+    ):
         """Test that there are no gaps between clips on timeline (no rounding errors)."""
         output_path = tmp_path / "output.fcpxml"
 
@@ -142,8 +145,9 @@ class TestFCPXMLExporter:
             expected_num = end_num * next_offset[1]
             actual_num = next_offset[0] * end_den
 
-            assert expected_num == actual_num, \
-                f"Discontinuity between segment {i+1} and {i+2}: {current.get('offset')} + {current.get('duration')} != {next_clip.get('offset')}"
+            assert expected_num == actual_num, (
+                f"Discontinuity between segment {i + 1} and {i + 2}: {current.get('offset')} + {current.get('duration')} != {next_clip.get('offset')}"
+            )
 
     def test_export_rational_fps(self, tmp_path, sample_cutter_result):
         """Test that rational FPS is used correctly."""
@@ -154,7 +158,7 @@ class TestFCPXMLExporter:
             width=1920,
             height=1080,
             has_video=True,
-            file_path="/path/to/video.mp4"
+            file_path="/path/to/video.mp4",
         )
 
         output_path = tmp_path / "output.fcpxml"
@@ -267,9 +271,7 @@ class TestFCPXMLExporter:
         assert len(clips) == 1
         assert clips[0].get("name") == "Keep 1"
 
-    def test_export_handles_fps_rational_without_slash(
-        self, tmp_path, sample_cutter_result
-    ):
+    def test_export_handles_fps_rational_without_slash(self, tmp_path, sample_cutter_result):
         """FCPXML handles fps_rational without '/' (e.g. '25' or '29.97')."""
         media_info = MediaInfo(
             fps=25.0,
@@ -287,9 +289,7 @@ class TestFCPXMLExporter:
         tree = etree.parse(output_path)
         format_el = tree.xpath("//format")[0]
         assert format_el.get("frameDuration") == "1/25s"
-        assert len(tree.xpath("//spine/asset-clip")) == len(
-            sample_cutter_result.keep_segments
-        )
+        assert len(tree.xpath("//spine/asset-clip")) == len(sample_cutter_result.keep_segments)
 
 
 class TestJSONExporter:

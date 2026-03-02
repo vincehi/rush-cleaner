@@ -7,17 +7,16 @@ These tests verify that:
 4. Empty inputs are handled gracefully
 """
 
-import pytest
 
 from derush.config import CutterConfig
-from derush.models import Word, WordStatus
 from derush.cutter import (
-    correct_word_timestamps,
     classify_words,
     compute_cuts,
     compute_keep_segments,
+    correct_word_timestamps,
     run_pipeline,
 )
+from derush.models import Word, WordStatus
 
 
 class TestSilentFile:
@@ -45,11 +44,9 @@ class TestSilentFile:
         import json
 
         whisperx_path = tmp_path / "empty.json"
-        whisperx_path.write_text(json.dumps({
-            "segments": [],
-            "word_segments": [],
-            "language": "fr"
-        }))
+        whisperx_path.write_text(
+            json.dumps({"segments": [], "word_segments": [], "language": "fr"})
+        )
 
         config = CutterConfig()
         result = run_pipeline(
@@ -201,13 +198,11 @@ class TestVeryLongFiles:
         words = []
         for i in range(100):
             start = i * 30.0 + 1.0  # Word every 30 seconds
-            words.append(Word(
-                word=f"word{i}",
-                start=start,
-                end=start + 0.5,
-                score=0.9,
-                status=WordStatus.KEPT
-            ))
+            words.append(
+                Word(
+                    word=f"word{i}", start=start, end=start + 0.5, score=0.9, status=WordStatus.KEPT
+                )
+            )
 
         total_duration = 3600.0  # 1 hour
 
@@ -303,10 +298,7 @@ class TestUnusualInputs:
         assert len(cuts) >= 1
 
         # Filler should be covered by a cut
-        filler_covered = any(
-            c.start <= 0.0 and c.end >= 0.3
-            for c in cuts
-        )
+        filler_covered = any(c.start <= 0.0 and c.end >= 0.3 for c in cuts)
         assert filler_covered
 
     def test_all_filler_words(self):
@@ -329,7 +321,7 @@ class TestUnusualInputs:
         """Words with very low scores should be handled."""
         words = [
             Word(word="unclear", start=0.0, end=5.0, score=0.1),  # Very low score
-            Word(word="also", start=5.0, end=10.0, score=0.05),   # Even lower
+            Word(word="also", start=5.0, end=10.0, score=0.05),  # Even lower
         ]
 
         config = CutterConfig(min_word_score=0.5)

@@ -2,17 +2,18 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class WordStatus(str, Enum):
     """Status of a word in the cutting pipeline."""
+
     KEPT = "kept"
     FILLER = "filler"
 
 
 class CutType(str, Enum):
     """Type of cut."""
+
     SILENCE = "silence"
     FILLER = "filler"
     GAP = "gap"
@@ -21,6 +22,7 @@ class CutType(str, Enum):
 
 class CutReason(str, Enum):
     """Reason for a cut."""
+
     GAP_BEFORE_SPEECH = "gap_before_speech"
     GAP_AFTER_SPEECH = "gap_after_speech"
     GAP_BETWEEN_SEGMENTS = "gap_between_segments"
@@ -37,18 +39,20 @@ NTSC_FPS_TOLERANCE = 0.01
 @dataclass
 class Segment:
     """Represents a transcription segment with multiple words."""
-    start: float          # In seconds
-    end: float            # In seconds
-    text: str             # Full text of the segment
-    words: list["Word"]   # Word-level timestamps
+
+    start: float  # In seconds
+    end: float  # In seconds
+    text: str  # Full text of the segment
+    words: list["Word"]  # Word-level timestamps
 
 
 @dataclass
 class Word:
     """Represents a single word with timing information."""
+
     word: str
     start: float  # In seconds
-    end: float    # In seconds
+    end: float  # In seconds
     score: float  # Confidence score from WhisperX
     status: WordStatus = WordStatus.KEPT  # Set during classification
 
@@ -56,19 +60,21 @@ class Word:
 @dataclass
 class Cut:
     """Represents a segment to cut from the video."""
-    start: float          # In seconds
-    end: float            # In seconds
-    cut_type: CutType     # Type of cut
-    reason: CutReason     # Why this cut was made
-    word: Optional[str] = None  # For filler cuts, the word that was cut
+
+    start: float  # In seconds
+    end: float  # In seconds
+    cut_type: CutType  # Type of cut
+    reason: CutReason  # Why this cut was made
+    word: str | None = None  # For filler cuts, the word that was cut
 
 
 @dataclass
 class KeepSegment:
     """Represents a segment to keep in the final video."""
-    start: float    # In seconds
-    end: float      # In seconds
-    
+
+    start: float  # In seconds
+    end: float  # In seconds
+
     @property
     def duration(self) -> float:
         """Duration of the segment in seconds."""
@@ -78,10 +84,11 @@ class KeepSegment:
 @dataclass
 class CutterResult:
     """Result of the cutting pipeline."""
-    words: list[Word]              # All words with their status
-    cuts: list[Cut]                # Segments to cut
+
+    words: list[Word]  # All words with their status
+    cuts: list[Cut]  # Segments to cut
     keep_segments: list[KeepSegment]  # Segments to keep
-    
+
     # Summary stats
     total_words: int
     kept_words: int
@@ -89,7 +96,7 @@ class CutterResult:
     original_duration: float
     final_duration: float
     cut_duration: float
-    
+
     @property
     def cut_percentage(self) -> float:
         """Percentage of the video that will be cut."""
@@ -126,13 +133,13 @@ def merge_adjacent_cuts(cuts: list[Cut]) -> list[Cut]:
                 merged_type = previous.cut_type
             else:
                 merged_type = CutType.MIXED
-            
+
             merged[-1] = Cut(
                 start=previous.start,
                 end=max(previous.end, current.end),
                 cut_type=merged_type,
                 reason=CutReason.MERGED,
-                word=None
+                word=None,
             )
         else:
             merged.append(current)
@@ -143,16 +150,19 @@ def merge_adjacent_cuts(cuts: list[Cut]) -> list[Cut]:
 @dataclass
 class MediaInfo:
     """Video/Audio file metadata."""
-    fps: float              # Ex: 29.97, 25.0, 24.0
-    fps_rational: str       # Ex: "30000/1001", "25/1"
-    duration: float         # In seconds (from container format)
-    width: int              # Video width in pixels
-    height: int             # Video height in pixels
-    has_video: bool         # True for video files, False for audio-only
-    file_path: str          # Absolute path to the source file
-    nb_frames: Optional[int] = None  # Video stream frame count when available (avoids media offline)
-    audio_sample_rate: Optional[int] = None   # From ffprobe when available (e.g. 48000, 44100)
-    audio_channels: Optional[int] = None      # From ffprobe when available (1=mono, 2=stereo)
+
+    fps: float  # Ex: 29.97, 25.0, 24.0
+    fps_rational: str  # Ex: "30000/1001", "25/1"
+    duration: float  # In seconds (from container format)
+    width: int  # Video width in pixels
+    height: int  # Video height in pixels
+    has_video: bool  # True for video files, False for audio-only
+    file_path: str  # Absolute path to the source file
+    nb_frames: int | None = (
+        None  # Video stream frame count when available (avoids media offline)
+    )
+    audio_sample_rate: int | None = None  # From ffprobe when available (e.g. 48000, 44100)
+    audio_channels: int | None = None  # From ffprobe when available (1=mono, 2=stereo)
 
     @property
     def total_frames(self) -> int:

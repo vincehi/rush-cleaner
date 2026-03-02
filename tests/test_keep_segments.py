@@ -10,8 +10,8 @@ These tests verify that:
 import pytest
 
 from derush.config import CutterConfig
-from derush.models import Word, WordStatus, Cut, CutType, CutReason, KeepSegment
 from derush.cutter import compute_cuts, compute_keep_segments
+from derush.models import Cut, CutReason, CutType, KeepSegment, Word, WordStatus
 
 
 class TestNoOverlappingSegments:
@@ -27,8 +27,9 @@ class TestNoOverlappingSegments:
         segments = compute_keep_segments(cuts, total_duration=5.0)
 
         for i in range(len(segments) - 1):
-            assert segments[i].end <= segments[i + 1].start, \
+            assert segments[i].end <= segments[i + 1].start, (
                 f"Segments overlap: [{segments[i].start}, {segments[i].end}] and [{segments[i + 1].start}, {segments[i + 1].end}]"
+            )
 
     def test_keep_segments_from_pipeline_dont_overlap(self):
         """Keep segments from full pipeline should not overlap."""
@@ -54,7 +55,9 @@ class TestNoNegativeDuration:
     def test_keep_segments_have_positive_duration(self):
         """Each keep segment must have end > start."""
         cuts = [
-            Cut(start=1.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+            Cut(
+                start=1.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+            ),
             Cut(start=3.0, end=4.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
         ]
 
@@ -88,8 +91,9 @@ class TestFullCoverage:
         cut_duration = sum(c.end - c.start for c in cuts)
         keep_duration = sum(s.duration for s in segments)
 
-        assert abs(cut_duration + keep_duration - total_duration) < 0.001, \
+        assert abs(cut_duration + keep_duration - total_duration) < 0.001, (
             f"Coverage gap: cuts={cut_duration}, keeps={keep_duration}, total={total_duration}"
+        )
 
     def test_full_coverage_from_pipeline(self):
         """Full pipeline should produce complete coverage."""
@@ -178,8 +182,9 @@ class TestNoGapsBetweenSegments:
         for i in range(len(timeline) - 1):
             current_end = timeline[i][2]
             next_start = timeline[i + 1][1]
-            assert abs(current_end - next_start) < 0.001, \
+            assert abs(current_end - next_start) < 0.001, (
                 f"Gap between {timeline[i]} and {timeline[i + 1]}"
+            )
 
 
 class TestSampleData:
@@ -300,7 +305,9 @@ class TestEdgeCases:
         cuts = [
             Cut(start=0.0, end=1.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
             Cut(start=1.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
-            Cut(start=2.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+            Cut(
+                start=2.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+            ),
         ]
 
         segments = compute_keep_segments(cuts, total_duration=5.0)

@@ -3,15 +3,15 @@
 import pytest
 
 from derush.config import CutterConfig
-from derush.models import Word, WordStatus, CutType, CutReason
 from derush.cutter import (
-    _normalize_word,
     _build_filler_patterns,
-    is_filler,
+    _normalize_word,
     classify_words,
     compute_cuts,
     compute_keep_segments,
+    is_filler,
 )
+from derush.models import CutReason, CutType, Word, WordStatus
 
 
 class TestNormalizeWord:
@@ -334,16 +334,21 @@ class TestRunPipelineValidation:
     def test_invalid_word_segment_raises_validation_error(self, tmp_path):
         """Malformed word segment (missing 'start') raises ValidationError with clear message."""
         import json
+
         from derush.cutter import run_pipeline
         from derush.exceptions import ValidationError
 
         bad_json = tmp_path / "bad.json"
-        bad_json.write_text(json.dumps({
-            "word_segments": [
-                {"word": "hello", "end": 1.0},
-            ],
-            "language": "fr",
-        }))
+        bad_json.write_text(
+            json.dumps(
+                {
+                    "word_segments": [
+                        {"word": "hello", "end": 1.0},
+                    ],
+                    "language": "fr",
+                }
+            )
+        )
 
         with pytest.raises(ValidationError, match="Invalid word segment.*'start'.*'end'"):
             run_pipeline(
@@ -355,22 +360,27 @@ class TestRunPipelineValidation:
     def test_word_segments_built_from_segments_when_missing(self, tmp_path):
         """When word_segments is missing, it is built from segments[].words."""
         import json
+
         from derush.cutter import run_pipeline
 
         json_path = tmp_path / "from_segments.json"
-        json_path.write_text(json.dumps({
-            "segments": [
+        json_path.write_text(
+            json.dumps(
                 {
-                    "start": 0.0,
-                    "end": 1.0,
-                    "text": "hi",
-                    "words": [
-                        {"word": "hi", "start": 0.0, "end": 1.0, "score": 0.9},
+                    "segments": [
+                        {
+                            "start": 0.0,
+                            "end": 1.0,
+                            "text": "hi",
+                            "words": [
+                                {"word": "hi", "start": 0.0, "end": 1.0, "score": 0.9},
+                            ],
+                        },
                     ],
-                },
-            ],
-            "language": "fr",
-        }))
+                    "language": "fr",
+                }
+            )
+        )
 
         result = run_pipeline(
             whisperx_path=json_path,

@@ -7,6 +7,7 @@ from derush.exporters.json import JSONExporter
 def get_fcpxml_exporter():
     """Get FCPXML exporter (requires lxml)."""
     from derush.exporters.fcpxml import FCPXMLExporter
+
     return FCPXMLExporter()
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Install derush CLI via uv (no Python required beforehand).
-# Usage: curl -LsSf https://raw.githubusercontent.com/vincentsourice/derush/main/install.sh | sh
+# Usage: curl -LsSf https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.sh | sh
 
 set -e
 
@@ -29,7 +29,7 @@ fi
 
 # Install derush from GitHub (main)
 echo "Installing derush..."
-uv tool install "derush @ git+https://github.com/vincentsourice/derush.git"
+uv tool install "derush @ git+https://github.com/vincehi/rush-cleaner.git"
 
 echo ""
 echo "Installation complete. Run:  derush --help"

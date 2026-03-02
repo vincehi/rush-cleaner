@@ -8,9 +8,9 @@ These tests verify that:
 
 import pytest
 
-from derush.models import Word, WordStatus
-from derush.cutter import classify_words, is_filler, _build_filler_patterns
 from derush.config import DEFAULT_FILLERS
+from derush.cutter import _build_filler_patterns, classify_words, is_filler
+from derush.models import Word, WordStatus
 
 
 class TestAuthorizedFillers:
@@ -103,7 +103,9 @@ class TestForbiddenFillers:
 
         result = classify_words(words, language="fr")
 
-        assert all(w.status == WordStatus.KEPT for w in result), "'du coup' must NOT be classified as filler"
+        assert all(w.status == WordStatus.KEPT for w in result), (
+            "'du coup' must NOT be classified as filler"
+        )
 
     def test_en_fait_is_kept(self):
         """'en fait' is a common expression, must NOT be cut."""
@@ -114,7 +116,9 @@ class TestForbiddenFillers:
 
         result = classify_words(words, language="fr")
 
-        assert all(w.status == WordStatus.KEPT for w in result), "'en fait' must NOT be classified as filler"
+        assert all(w.status == WordStatus.KEPT for w in result), (
+            "'en fait' must NOT be classified as filler"
+        )
 
     def test_bon_alone_is_kept(self):
         """'bon' alone (not 'bon ben') must NOT be cut."""
@@ -216,8 +220,9 @@ class TestSampleRegression:
         for word in result:
             expected_status = expected.get(word.word)
             if expected_status:
-                assert word.status == expected_status, \
+                assert word.status == expected_status, (
                     f"'{word.word}' expected {expected_status}, got {word.status}"
+                )
 
 
 class TestCustomFillers:

@@ -1,5 +1,5 @@
 # Install derush CLI via uv (no Python required beforehand).
-# Usage: irm https://raw.githubusercontent.com/vincentsourice/derush/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/vincehi/rush-cleaner/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
@@ -17,7 +17,7 @@ if (!(Get-Command uv -ErrorAction SilentlyContinue)) {
 
 # Install derush from GitHub (main)
 Write-Host "Installing derush..."
-uv tool install "derush @ git+https://github.com/vincentsourice/derush.git"
+uv tool install "derush @ git+https://github.com/vincehi/rush-cleaner.git"
 
 Write-Host ""
 Write-Host "Installation complete. Run:  derush --help"
