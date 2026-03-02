@@ -19,14 +19,6 @@ class CutterConfig:
     # Filler + pause = hesitation, should be removed
     gap_after_filler: bool = True
 
-    # Maximum allowed word duration (seconds)
-    # Words longer than this are considered misaligned and will be corrected
-    max_word_duration: float = 2.0
-
-    # Minimum confidence score for word alignment
-    # Words with score below this threshold may have their timestamps adjusted
-    min_word_score: float = 0.5
-
     # Padding (seconds) to leave at each side of a cut.
     # Reduces the cut by this amount on both sides so transitions are less abrupt.
     # E.g. 0.1 = keep 0.1s before and 0.1s after each cut boundary.

@@ -85,23 +85,30 @@ def correct_word_timestamps(words: list[Word], config: CutterConfig) -> list[Wor
     for i, word in enumerate(words):
         duration = word.end - word.start
 
-        # Check if this word needs correction
-        needs_correction = duration > config.max_word_duration or word.score < config.min_word_score
+        # Get expected/max duration for this word based on length
+        normalized = _normalize_word(word.word)
+        max_duration = AVERAGE_WORD_DURATIONS.get(normalized)
+
+        # If no known average, estimate max duration based on word length
+        if max_duration is None:
+            char_count = len(normalized)
+            if char_count <= 3:
+                max_duration = 0.3  # Short words: "cas", "le", "de"
+            elif char_count <= 5:
+                max_duration = 0.4  # Medium-short: "voiture"
+            elif char_count <= 8:
+                max_duration = 0.6  # Medium: "maintenant"
+            elif char_count <= 12:
+                max_duration = 0.8  # Long: "ordinateur"
+            else:
+                max_duration = 1.0  # Very long: "anticonstitutionnellement"
+
+        # Correct if duration exceeds max (regardless of score)
+        needs_correction = duration > max_duration
 
         if needs_correction:
-            # Get expected duration for this word
-            normalized = _normalize_word(word.word)
-            expected_duration = AVERAGE_WORD_DURATIONS.get(normalized)
-
-            # If no known average, estimate based on word length
-            if expected_duration is None:
-                # Rough estimate: ~0.1s per character, max 0.5s for content words
-                # Fillers are typically shorter
-                char_count = len(normalized)
-                expected_duration = min(0.08 * char_count, 0.5)
-
-            # Truncate the word's end time if it's too long
-            new_end = word.start + expected_duration
+            # Truncate the word's end time
+            new_end = word.start + max_duration
 
             # Don't extend beyond the next word's start
             if i + 1 < len(words):
