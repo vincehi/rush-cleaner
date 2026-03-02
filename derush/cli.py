@@ -61,7 +61,7 @@ def main(
         None,
         "--lang",
         "-l",
-        help="Language code (fr, en). Auto-detected if not specified; fallback for fillers: en.",
+        help="Language code (fr, en). Auto-detected from transcription if not specified.",
     ),
     min_silence: float = typer.Option(
         0.5, "--min-silence", help="Minimum silence duration in seconds to cut"
@@ -214,8 +214,16 @@ def main(
         cut_padding=cut_padding,
     )
 
-    # Language for fillers: user-specified or fallback to English
-    detected_language = language if language else "en"
+    # Language for fillers: user-specified, or read from WhisperX output
+    if language:
+        detected_language = language
+    else:
+        # Read language from WhisperX output
+        import json
+
+        with open(whisperx_output, encoding="utf-8") as f:
+            whisperx_data = json.load(f)
+        detected_language = whisperx_data.get("language", "en")
 
     # Run cutting pipeline
     typer.echo(f"\nRunning cutting pipeline (language: {detected_language})...")

@@ -94,7 +94,7 @@ derush video.mp4 --verbose
 |--------|-------------|--------|
 | `--output`, `-o` | Output file | Next to video (same name, .fcpxml or .json) |
 | `--format`, `-f` | Output format (`fcpxml`, `json`) | `fcpxml` |
-| `--lang`, `-l` | Language (`fr`, `en`). If not specified: auto-detect, filler fallback = en | auto |
+| `--lang`, `-l` | Language (`fr`, `en`). Auto-detected from transcription if not specified | auto |
 | `--min-silence` | Min. silence duration to cut (seconds) | `0.5` |
 | `--min-gap` | Min. gap between words to cut (seconds) | `0.3` |
 | `--cut-padding` | Seconds to keep on each side of cuts (softens transitions; cuts too short are left unchanged) | `0` |

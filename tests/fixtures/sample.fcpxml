@@ -8,7 +8,7 @@
     </asset>
   </resources>
   <library>
-    <event name="Dérushage Auto">
+    <event name="Auto Derush">
       <project name="Cuts">
         <sequence format="r1" duration="289083/47300s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="44100">
           <spine>
