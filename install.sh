@@ -29,7 +29,7 @@ fi
 
 # Install derush from GitHub (main)
 echo "Installing derush..."
-uv tool install "derush @ git+https://github.com/vincehi/rush-cleaner.git"
+uv tool install "derush[export] @ git+https://github.com/vincehi/rush-cleaner.git"
 
 echo ""
 echo "Installation complete. Run:  derush --help"

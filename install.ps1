@@ -17,7 +17,7 @@ if (!(Get-Command uv -ErrorAction SilentlyContinue)) {
 
 # Install derush from GitHub (main)
 Write-Host "Installing derush..."
-uv tool install "derush @ git+https://github.com/vincehi/rush-cleaner.git"
+uv tool install "derush[export] @ git+https://github.com/vincehi/rush-cleaner.git"
 
 Write-Host ""
 Write-Host "Installation complete. Run:  derush --help"
