@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from derush.models import MediaInfo
 
@@ -77,12 +78,19 @@ def _parse_ffprobe_output(
 
     has_video = video_stream is not None
 
+    nb_frames: Optional[int] = None
     if has_video:
-        # Extract FPS from video stream
+        # Extract FPS and frame count from video stream (nb_frames avoids FCPXML "media offline")
         fps_rational = video_stream.get("avg_frame_rate", "25/1")
         fps = _parse_frame_rate(fps_rational)
         width = int(video_stream.get("width", 0))
         height = int(video_stream.get("height", 0))
+        nb_frames_raw = video_stream.get("nb_frames")
+        if nb_frames_raw is not None:
+            try:
+                nb_frames = int(nb_frames_raw)
+            except (TypeError, ValueError):
+                pass
     else:
         # Audio-only file
         fps_rational = f"{int(fallback_fps)}/1"
@@ -97,7 +105,8 @@ def _parse_ffprobe_output(
         width=width,
         height=height,
         has_video=has_video,
-        file_path=str(file_path.absolute())
+        file_path=str(file_path.absolute()),
+        nb_frames=nb_frames,
     )
 
 
@@ -126,5 +135,6 @@ def _get_fallback_media_info(file_path: Path, fallback_fps: float) -> MediaInfo:
         width=0,
         height=0,
         has_video=False,  # Conservative assumption
-        file_path=str(file_path.absolute())
+        file_path=str(file_path.absolute()),
+        nb_frames=None,
     )

@@ -145,15 +145,22 @@ class MediaInfo:
     """Video/Audio file metadata."""
     fps: float              # Ex: 29.97, 25.0, 24.0
     fps_rational: str       # Ex: "30000/1001", "25/1"
-    duration: float         # In seconds
+    duration: float         # In seconds (from container format)
     width: int              # Video width in pixels
     height: int             # Video height in pixels
     has_video: bool         # True for video files, False for audio-only
     file_path: str          # Absolute path to the source file
+    nb_frames: Optional[int] = None  # Video stream frame count when available (avoids media offline)
 
     @property
     def total_frames(self) -> int:
-        """Total number of frames in the video."""
+        """Total number of frames in the video.
+
+        Uses nb_frames from the video stream when available (frame-accurate);
+        otherwise falls back to duration * fps.
+        """
+        if self.nb_frames is not None and self.nb_frames > 0:
+            return self.nb_frames
         return int(self.duration * self.fps)
 
     def seconds_to_frames(self, seconds: float) -> int:

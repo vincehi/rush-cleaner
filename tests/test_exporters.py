@@ -173,6 +173,125 @@ class TestFCPXMLExporter:
         # Should be in format "1001/30000s" (inverted from fps_rational)
         assert "1001/30000s" in frame_duration
 
+    def test_export_asset_duration_uses_nb_frames_when_present(
+        self, tmp_path, sample_cutter_result
+    ):
+        """When MediaInfo has nb_frames, asset duration in FCPXML is frame-based (avoids media offline)."""
+        media_info = MediaInfo(
+            fps=25.0,
+            fps_rational="25/1",
+            duration=20.0,
+            width=1920,
+            height=1080,
+            has_video=True,
+            file_path="/path/to/video.mp4",
+            nb_frames=473,
+        )
+        output_path = tmp_path / "output.fcpxml"
+        exporter = FCPXMLExporter()
+        exporter.export(sample_cutter_result, media_info, output_path)
+
+        tree = etree.parse(output_path)
+        asset = tree.xpath("//asset")[0]
+        duration_str = asset.get("duration")
+        # 473 frames at 25fps -> 473/25s
+        assert duration_str == "473/25s"
+
+    def test_export_no_clip_exceeds_asset_duration(
+        self, tmp_path, sample_cutter_result, sample_media_info
+    ):
+        """No asset-clip must have start+duration > asset duration (prevents media offline)."""
+        output_path = tmp_path / "output.fcpxml"
+        exporter = FCPXMLExporter()
+        exporter.export(sample_cutter_result, sample_media_info, output_path)
+
+        tree = etree.parse(output_path)
+        asset = tree.xpath("//asset")[0]
+        clips = tree.xpath("//spine/asset-clip")
+
+        def parse_rational(s):
+            s = s.rstrip("s")
+            if "/" in s:
+                num, den = map(int, s.split("/"))
+                return num, den
+            return int(float(s)), 1
+
+        asset_num, asset_den = parse_rational(asset.get("duration"))
+        for clip in clips:
+            start_num, start_den = parse_rational(clip.get("start"))
+            dur_num, dur_den = parse_rational(clip.get("duration"))
+            # clip end = start + duration (as rationals)
+            end_num = start_num * dur_den + dur_num * start_den
+            end_den = start_den * dur_den
+            # end <= asset_duration  <=>  end_num * asset_den <= asset_num * end_den
+            assert end_num * asset_den <= asset_num * end_den, (
+                f"Clip {clip.get('name')} exceeds asset: "
+                f"start={clip.get('start')} duration={clip.get('duration')} asset duration={asset.get('duration')}"
+            )
+
+    def test_export_clamps_and_skips_segments_past_asset_end(self, tmp_path):
+        """When nb_frames limits the asset, segments past the end are clamped or skipped."""
+        media_info = MediaInfo(
+            fps=25.0,
+            fps_rational="25/1",
+            duration=60.0,
+            width=1920,
+            height=1080,
+            has_video=True,
+            file_path="/path/to/video.mp4",
+            nb_frames=75,
+        )
+        # 75 frames at 25fps = 3s. Segment [0, 2] fits; segment [10, 12] starts past the end -> skipped
+        from derush.models import CutterResult, KeepSegment
+
+        result = CutterResult(
+            words=[],
+            cuts=[],
+            keep_segments=[
+                KeepSegment(start=0.0, end=2.0),
+                KeepSegment(start=10.0, end=12.0),
+            ],
+            total_words=0,
+            kept_words=0,
+            filler_words=0,
+            original_duration=60.0,
+            final_duration=4.0,
+            cut_duration=56.0,
+        )
+        output_path = tmp_path / "output.fcpxml"
+        exporter = FCPXMLExporter()
+        exporter.export(result, media_info, output_path)
+
+        tree = etree.parse(output_path)
+        clips = tree.xpath("//spine/asset-clip")
+        # Only the first segment fits; the second is entirely past 75 frames (3s)
+        assert len(clips) == 1
+        assert clips[0].get("name") == "Keep 1"
+
+    def test_export_handles_fps_rational_without_slash(
+        self, tmp_path, sample_cutter_result
+    ):
+        """FCPXML handles fps_rational without '/' (e.g. '25' or '29.97')."""
+        media_info = MediaInfo(
+            fps=25.0,
+            fps_rational="25",
+            duration=60.0,
+            width=1920,
+            height=1080,
+            has_video=True,
+            file_path="/path/to/video.mp4",
+        )
+        output_path = tmp_path / "output.fcpxml"
+        exporter = FCPXMLExporter()
+        exporter.export(sample_cutter_result, media_info, output_path)
+
+        tree = etree.parse(output_path)
+        format_el = tree.xpath("//format")[0]
+        assert format_el.get("frameDuration") == "1/25s"
+        assert len(tree.xpath("//spine/asset-clip")) == len(
+            sample_cutter_result.keep_segments
+        )
+
 
 class TestEDLExporter:
     """Tests for EDLExporter class."""

@@ -94,6 +94,39 @@ class TestGetMediaInfo:
         assert result.width == 1920
         assert result.height == 1080
         assert result.has_video is True
+        assert result.nb_frames is None  # not in mock
+
+    @patch("derush.media_info.shutil.which")
+    @patch("derush.media_info.subprocess.run")
+    def test_extract_video_info_includes_nb_frames(self, mock_run, mock_which, tmp_path):
+        """When ffprobe returns nb_frames on the video stream, MediaInfo has it set (avoids media offline)."""
+        mock_which.return_value = "/usr/bin/ffprobe"
+        test_file = tmp_path / "test.mp4"
+        test_file.touch()
+
+        ffprobe_output = {
+            "streams": [
+                {
+                    "codec_type": "video",
+                    "avg_frame_rate": "25/1",
+                    "width": 1920,
+                    "height": 1080,
+                    "nb_frames": "473",
+                },
+                {"codec_type": "audio"},
+            ],
+            "format": {"duration": "19.0"},
+        }
+
+        mock_result = MagicMock()
+        mock_result.stdout = json.dumps(ffprobe_output)
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
+
+        result = get_media_info(test_file)
+
+        assert result.nb_frames == 473
+        assert result.has_video is True
 
     @patch("derush.media_info.shutil.which")
     @patch("derush.media_info.subprocess.run")
