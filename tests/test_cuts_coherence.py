@@ -9,11 +9,8 @@ These tests verify that:
 
 import json
 
-import pytest
-
-from derush.config import CutterConfig
 from derush.cutter import run_pipeline
-from derush.models import Cut, CutReason, CutType, Word, WordStatus
+from derush.models import CutType, WordStatus
 
 
 class TestNoOverlappingCuts:

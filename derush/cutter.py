@@ -47,7 +47,6 @@ from derush.models import (
     WordStatus,
 )
 
-
 # =============================================================================
 # Step 1: LOAD - Parse WhisperX JSON
 # =============================================================================
@@ -516,7 +515,7 @@ def run_pipeline(
     # Track which words were corrected (for TimelineToken.corrected)
     corrected_indices = set()
     original_words = load_whisperx_words(whisperx_path)
-    for i, (orig, corr) in enumerate(zip(original_words, words)):
+    for i, (orig, corr) in enumerate(zip(original_words, words, strict=True)):
         if orig.end != corr.end:
             corrected_indices.add(i)
 

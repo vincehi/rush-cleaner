@@ -11,7 +11,6 @@ import json
 
 import pytest
 
-from derush.config import CutterConfig
 from derush.cutter import (
     classify_words,
     correct_word_timestamps,

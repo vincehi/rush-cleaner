@@ -4,7 +4,6 @@ import json
 
 import pytest
 
-from derush.config import CutterConfig
 from derush.cutter import (
     _build_filler_patterns,
     _normalize_word,
@@ -14,14 +13,10 @@ from derush.cutter import (
     estimate_word_duration,
     filter_kept_words,
     is_filler,
-    load_whisperx_words,
     merge_adjacent_tokens,
     run_pipeline,
 )
 from derush.models import (
-    Cut,
-    CutReason,
-    CutType,
     TimelineToken,
     Word,
     WordStatus,

@@ -11,9 +11,7 @@ import json
 
 import pytest
 
-from derush.config import CutterConfig
 from derush.cutter import run_pipeline
-from derush.models import Cut, CutReason, CutType, KeepSegment, Word, WordStatus
 
 
 class TestNoOverlappingSegments:

@@ -10,7 +10,6 @@ Generates JSON files at each step of the V2 pipeline for debugging:
 """
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from derush.models import TimelineSegment, TimelineToken, Word

@@ -251,7 +251,7 @@ class TestFCPXMLExporter:
         )
         # With token-based approach, clips are generated from words
         # Words at [0.0-1.0] fit, words at [10.0-12.0] are past the asset end
-        from derush.models import Word, WordStatus, CutterResult, KeepSegment
+        from derush.models import CutterResult, KeepSegment, Word, WordStatus
 
         result = CutterResult(
             words=[
