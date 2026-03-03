@@ -27,11 +27,10 @@ class TestModuleImports:
 
     def test_import_cutter(self):
         """Test importing cutter module."""
-        from derush.cutter import classify_words, compute_cuts, run_pipeline
+        from derush.cutter import classify_words, run_pipeline
 
         assert run_pipeline is not None
         assert classify_words is not None
-        assert compute_cuts is not None
 
     def test_import_exporters(self):
         """Test importing exporter modules."""

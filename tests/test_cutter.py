@@ -99,12 +99,15 @@ class TestEstimateWordDuration:
     def test_medium_words(self):
         """4-5 letter words get medium duration."""
         assert estimate_word_duration("test") == 0.35
-        assert estimate_word_duration("voiture") == 0.35
+        # "voiture" has 7 letters -> 6-8 category
+        assert estimate_word_duration("voiture") == 0.55
 
     def test_longer_words(self):
         """6-8 letter words get longer duration."""
-        assert estimate_word_duration("maintenant") == 0.55
-        assert estimate_word_duration("ordinateur") == 0.55
+        # "maintenant" has 10 letters -> 9+ category
+        assert estimate_word_duration("maintenant") == 0.8
+        # "manger" has 6 letters -> 6-8 category
+        assert estimate_word_duration("manger") == 0.55
 
     def test_very_long_words(self):
         """Very long words are capped at max duration."""
@@ -117,9 +120,12 @@ class TestCorrectWordTimestamps:
 
     def test_no_correction_needed(self):
         """Words with normal duration are not corrected."""
+        # Use words with durations that don't exceed their expected max
+        # "bonjour" (7 letters) max = 0.55s, duration 0.5s is OK
+        # "monde" (5 letters) max = 0.35s, duration 0.3s is OK
         words = [
-            Word(word="hello", start=0.0, end=0.5, score=0.9),
-            Word(word="world", start=0.6, end=1.0, score=0.9),
+            Word(word="bonjour", start=0.0, end=0.5, score=0.9),
+            Word(word="monde", start=0.6, end=0.9, score=0.9),
         ]
         corrected, count = correct_word_timestamps(words)
         assert count == 0

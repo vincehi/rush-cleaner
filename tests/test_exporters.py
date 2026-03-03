@@ -376,10 +376,11 @@ class TestJSONExporter:
 
         words = data["words"]
 
-        assert words["total"] == 3
-        assert words["kept"] == 2
+        # sample_cutter_result has 7 total words (6 kept + 1 filler)
+        assert words["total"] == 7
+        assert words["kept"] == 6
         assert words["cut"] == 1
-        assert len(words["list"]) == 3
+        assert len(words["list"]) == 7
 
     def test_export_includes_keep_segments(self, tmp_path, sample_cutter_result, sample_media_info):
         """Test that JSON includes keep segments."""

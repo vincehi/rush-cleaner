@@ -200,7 +200,11 @@ class TestEdgeCases:
         assert len(result.keep_segments) == 0
 
     def test_single_word(self, tmp_path):
-        """Single word should produce one keep segment."""
+        """Single word should produce one keep segment.
+
+        Note: "hello" has 5 letters, so max duration is 0.35s (TIMING_5LETTER_MAX).
+        If the raw duration (0.5s) exceeds max, it word is corrected to 0.35s.
+        """
         whisperx_path = tmp_path / "test.json"
         whisperx_path.write_text(
             json.dumps(
@@ -220,4 +224,5 @@ class TestEdgeCases:
 
         assert len(result.keep_segments) == 1
         assert result.keep_segments[0].start == 0.0
-        assert result.keep_segments[0].end == 0.5
+        # "hello" is corrected to 0.35s max (TIMING_5LETTER_MAX)
+        assert result.keep_segments[0].end == 0.35
