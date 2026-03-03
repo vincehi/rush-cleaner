@@ -1,18 +1,26 @@
-"""Tests for cutter module."""
+"""Tests for cutter module V2."""
+
+import json
 
 import pytest
 
-from derush.config import CutterConfig
 from derush.cutter import (
     _build_filler_patterns,
     _normalize_word,
-    apply_cut_padding,
+    build_timeline,
     classify_words,
-    compute_cuts,
-    compute_keep_segments,
+    correct_word_timestamps,
+    estimate_word_duration,
+    filter_kept_words,
     is_filler,
+    merge_adjacent_tokens,
+    run_pipeline,
 )
-from derush.models import Cut, CutReason, CutType, Word, WordStatus
+from derush.models import (
+    TimelineToken,
+    Word,
+    WordStatus,
+)
 
 
 class TestNormalizeWord:
@@ -67,6 +75,75 @@ class TestIsFiller:
         assert is_filler("umbrella", patterns) is False
         # "hmm" in "humid" should not be detected
         assert is_filler("humid", patterns) is False
+
+
+class TestEstimateWordDuration:
+    """Tests for estimate_word_duration function."""
+
+    def test_short_words(self):
+        """Short words (1-2 letters) get minimum duration."""
+        assert estimate_word_duration("le") == 0.15
+        assert estimate_word_duration("de") == 0.15
+        assert estimate_word_duration("a") == 0.15
+
+    def test_three_letter_words(self):
+        """3-letter words get slightly longer duration."""
+        assert estimate_word_duration("pas") == 0.20
+        assert estimate_word_duration("cas") == 0.20
+
+    def test_medium_words(self):
+        """4-5 letter words get medium duration."""
+        assert estimate_word_duration("test") == 0.35
+        # "voiture" has 7 letters -> 6-8 category
+        assert estimate_word_duration("voiture") == 0.55
+
+    def test_longer_words(self):
+        """6-8 letter words get longer duration."""
+        # "maintenant" has 10 letters -> 9+ category
+        assert estimate_word_duration("maintenant") == 0.8
+        # "manger" has 6 letters -> 6-8 category
+        assert estimate_word_duration("manger") == 0.55
+
+    def test_very_long_words(self):
+        """Very long words are capped at max duration."""
+        # 20 chars * 0.08 = 1.6s, but capped at 1.5s
+        assert estimate_word_duration("anticonstitutionnellement") == 1.5
+
+
+class TestCorrectWordTimestamps:
+    """Tests for correct_word_timestamps function."""
+
+    def test_no_correction_needed(self):
+        """Words with normal duration are not corrected."""
+        # Use words with durations that don't exceed their expected max
+        # "bonjour" (7 letters) max = 0.55s, duration 0.5s is OK
+        # "monde" (5 letters) max = 0.35s, duration 0.3s is OK
+        words = [
+            Word(word="bonjour", start=0.0, end=0.5, score=0.9),
+            Word(word="monde", start=0.6, end=0.9, score=0.9),
+        ]
+        corrected, count = correct_word_timestamps(words)
+        assert count == 0
+        assert len(corrected) == 2
+
+    def test_abnormally_long_word_corrected(self):
+        """Words with abnormally long duration are truncated."""
+        # "test" (4 letters) should be ~0.35s max
+        words = [
+            Word(word="test", start=0.0, end=5.0, score=0.9),  # 5s = way too long
+        ]
+        corrected, count = correct_word_timestamps(words)
+        assert count == 1
+        assert corrected[0].end < 1.0  # Should be truncated to ~0.35s
+
+    def test_respects_next_word_boundary(self):
+        """Corrected end time doesn't extend past next word start."""
+        words = [
+            Word(word="test", start=0.0, end=5.0, score=0.9),
+            Word(word="next", start=0.3, end=0.5, score=0.9),  # Next word starts at 0.3
+        ]
+        corrected, count = correct_word_timestamps(words)
+        assert corrected[0].end < 0.3  # Should not extend past next word
 
 
 class TestClassifyWords:
@@ -125,327 +202,217 @@ class TestClassifyWords:
 
         assert result[1].status == WordStatus.FILLER
 
-    def test_phonetic_variants(self):
-        """Test detection of phonetic variants (mm, hm, hmm for um)."""
+
+class TestFilterKeptWords:
+    """Tests for filter_kept_words function."""
+
+    def test_filter_removes_fillers(self):
+        """Filler words are removed from the list."""
         words = [
-            Word(word="well", start=0.0, end=0.3, score=0.9),
-            Word(word="mm", start=0.4, end=0.6, score=0.7),
-            Word(word="okay", start=0.7, end=1.0, score=0.9),
-        ]
-
-        result = classify_words(words, language="en")
-
-        assert result[1].status == WordStatus.FILLER
-
-
-class TestComputeCuts:
-    """Tests for compute_cuts function."""
-
-    def test_filler_cut(self):
-        """Test that fillers are cut."""
-        words = [
-            Word(word="Hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
             Word(word="um", start=0.5, end=0.7, score=0.8, status=WordStatus.FILLER),
             Word(word="world", start=0.7, end=1.0, score=0.9, status=WordStatus.KEPT),
         ]
 
-        config = CutterConfig()
-        cuts = compute_cuts(words, config, total_duration=1.0)
+        kept = filter_kept_words(words)
 
-        # Should have a cut for the filler
-        filler_cut = next((c for c in cuts if c.cut_type == CutType.FILLER), None)
-        assert filler_cut is not None
-        assert filler_cut.start == 0.5
-        assert filler_cut.end == 0.7
-        assert filler_cut.word == "um"
+        assert len(kept) == 2
+        assert kept[0].word == "hello"
+        assert kept[1].word == "world"
 
-    def test_silence_at_beginning(self):
-        """Test silence detection at the beginning."""
+    def test_filter_keeps_all_when_no_fillers(self):
+        """All words kept when no fillers."""
         words = [
-            Word(word="Hello", start=1.0, end=1.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="world", start=0.5, end=1.0, score=0.9, status=WordStatus.KEPT),
         ]
 
-        config = CutterConfig(min_silence=0.5)
-        cuts = compute_cuts(words, config, total_duration=2.0)
+        kept = filter_kept_words(words)
 
-        # Should have a cut for the silence at the beginning (0.0 to 1.0)
-        silence_cut = next((c for c in cuts if c.reason == CutReason.GAP_BEFORE_SPEECH), None)
-        assert silence_cut is not None
-        assert silence_cut.start == 0.0
-        assert silence_cut.end == 1.0
+        assert len(kept) == 2
 
-    def test_silence_at_end(self):
-        """Test silence detection at the end."""
+
+class TestBuildTimeline:
+    """Tests for build_timeline function."""
+
+    def test_continuous_timeline(self):
+        """Timeline tokens have continuous positions."""
         words = [
-            Word(word="Hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="world", start=0.6, end=1.0, score=0.9, status=WordStatus.KEPT),
         ]
 
-        config = CutterConfig(min_silence=0.5)
-        cuts = compute_cuts(words, config, total_duration=2.0)
+        tokens = build_timeline(words)
 
-        # Should have a cut for the silence at the end (0.5 to 2.0)
-        end_cut = next((c for c in cuts if c.reason == CutReason.GAP_AFTER_SPEECH), None)
-        assert end_cut is not None
-        assert end_cut.start == 0.5
-        assert end_cut.end == 2.0
+        assert len(tokens) == 2
+        # First token starts at 0
+        assert tokens[0].timeline_start == 0.0
+        assert tokens[0].timeline_end == 0.5
+        # Second token continues immediately
+        assert tokens[1].timeline_start == 0.5
+        assert tokens[1].timeline_end == 0.9
 
-    def test_silence_between_segments(self):
-        """Test silence detection between segments (large gaps)."""
+    def test_original_positions_preserved(self):
+        """Original positions in source are preserved."""
         words = [
-            Word(word="First", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
-            Word(word="Second", start=2.0, end=2.5, score=0.9, status=WordStatus.KEPT),
+            Word(word="hello", start=1.0, end=1.5, score=0.9, status=WordStatus.KEPT),
         ]
 
-        config = CutterConfig(min_silence=0.5)
-        cuts = compute_cuts(words, config, total_duration=3.0)
+        tokens = build_timeline(words)
 
-        # Should have a cut for the gap between words (0.5 to 2.0)
-        gap_cut = next((c for c in cuts if c.reason == CutReason.GAP_BETWEEN_SEGMENTS), None)
-        assert gap_cut is not None
-        assert gap_cut.start == 0.5
-        assert gap_cut.end == 2.0
-
-    def test_min_silence_filter(self):
-        """Test that short silences are not cut."""
-        words = [
-            Word(word="First", start=0.0, end=1.0, score=0.9, status=WordStatus.KEPT),
-            Word(word="Second", start=1.2, end=2.0, score=0.9, status=WordStatus.KEPT),
-        ]
-
-        # Gap is 0.2s, below default min_gap_cut (0.3) → not cut
-        config = CutterConfig(min_silence=0.5)
-        cuts = compute_cuts(words, config, total_duration=2.0)
-
-        # No gap cut should exist
-        gap_cut = next((c for c in cuts if c.start == 1.0 and c.end == 1.2), None)
-        assert gap_cut is None
-
-    def test_min_gap_cut_controls_gap_between_segments(self):
-        """Gap-between-segments threshold is min_gap_cut, not min_silence."""
-        words = [
-            Word(word="A", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
-            Word(word="B", start=0.9, end=1.2, score=0.9, status=WordStatus.KEPT),
-        ]
-        # Gap = 0.4s
-        config_low = CutterConfig(min_silence=0.5, min_gap_cut=0.3)
-        cuts_low = compute_cuts(words, config_low, total_duration=2.0)
-        gap_cut_low = next(
-            (c for c in cuts_low if c.reason == CutReason.GAP_BETWEEN_SEGMENTS), None
-        )
-        assert gap_cut_low is not None
-        assert gap_cut_low.start == 0.5
-        assert gap_cut_low.end == 0.9
-
-        config_high = CutterConfig(min_silence=0.5, min_gap_cut=0.5)
-        cuts_high = compute_cuts(words, config_high, total_duration=2.0)
-        gap_cut_high = next(
-            (c for c in cuts_high if c.reason == CutReason.GAP_BETWEEN_SEGMENTS), None
-        )
-        assert gap_cut_high is None  # 0.4s < 0.5
-
-    def test_gap_after_filler_cut(self):
-        """Test that gaps after fillers are cut when enabled."""
-        words = [
-            Word(word="Hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
-            Word(word="um", start=0.5, end=0.6, score=0.8, status=WordStatus.FILLER),
-            Word(word="world", start=0.9, end=1.2, score=0.9, status=WordStatus.KEPT),
-        ]
-
-        config = CutterConfig(gap_after_filler=True)
-        cuts = compute_cuts(words, config, total_duration=1.5)
-
-        # Should have a merged cut (filler + gap after)
-        # The filler is at 0.5-0.6, gap is 0.6-0.9, so merged cut is 0.5-0.9
-        merged_cut = next((c for c in cuts if c.start == 0.5), None)
-        assert merged_cut is not None
-        assert merged_cut.end >= 0.6  # Should include the gap
-
-    def test_no_words_entire_silence(self):
-        """Test that no words results in entire file being cut."""
-        config = CutterConfig()
-        cuts = compute_cuts([], config, total_duration=5.0)
-
-        assert len(cuts) == 1
-        assert cuts[0].start == 0.0
-        assert cuts[0].end == 5.0
+        assert tokens[0].original_start == 1.0
+        assert tokens[0].original_end == 1.5
 
 
-class TestComputeKeepSegments:
-    """Tests for compute_keep_segments function."""
+class TestMergeAdjacentTokens:
+    """Tests for merge_adjacent_tokens function."""
 
-    def test_basic_keep_segments(self):
-        """Test basic keep segment computation."""
-        from derush.models import Cut
-
-        cuts = [
-            Cut(start=0.0, end=1.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
-            Cut(start=2.0, end=3.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
-        ]
-
-        keep_segments = compute_keep_segments(cuts, total_duration=5.0)
-
-        assert len(keep_segments) == 2
-        # First segment: 1.0 to 2.0
-        assert keep_segments[0].start == 1.0
-        assert keep_segments[0].end == 2.0
-        # Second segment: 3.0 to 5.0
-        assert keep_segments[1].start == 3.0
-        assert keep_segments[1].end == 5.0
-
-    def test_no_cuts(self):
-        """Test with no cuts - entire file is kept."""
-        keep_segments = compute_keep_segments([], total_duration=5.0)
-
-        assert len(keep_segments) == 1
-        assert keep_segments[0].start == 0.0
-        assert keep_segments[0].end == 5.0
-
-    def test_cut_at_beginning(self):
-        """Test with cut at the beginning."""
-        from derush.models import Cut
-
-        cuts = [
-            Cut(start=0.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
-        ]
-
-        keep_segments = compute_keep_segments(cuts, total_duration=5.0)
-
-        assert len(keep_segments) == 1
-        assert keep_segments[0].start == 2.0
-        assert keep_segments[0].end == 5.0
-
-    def test_cut_at_end(self):
-        """Test with cut at the end."""
-        from derush.models import Cut
-
-        cuts = [
-            Cut(start=3.0, end=5.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_AFTER_SPEECH),
-        ]
-
-        keep_segments = compute_keep_segments(cuts, total_duration=5.0)
-
-        assert len(keep_segments) == 1
-        assert keep_segments[0].start == 0.0
-        assert keep_segments[0].end == 3.0
-
-
-class TestApplyCutPadding:
-    """Tests for apply_cut_padding function."""
-
-    def test_padding_shrinks_cuts(self):
-        """Padding reduces each cut by the same amount on both sides."""
-        cuts = [
-            Cut(
-                start=1.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+    def test_single_token(self):
+        """Single token becomes single segment."""
+        tokens = [
+            TimelineToken(
+                text="hello",
+                original_start=0.0,
+                original_end=0.5,
+                timeline_start=0.0,
+                timeline_end=0.5,
             ),
         ]
-        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=10.0)
-        assert len(padded) == 1
-        assert padded[0].start == 1.2
-        assert padded[0].end == 2.8
-        assert stats.padded_count == 1
-        assert stats.unchanged_count == 0
-        assert stats.duration_regained == 0.4  # 2 * 0.2
 
-    def test_padding_zero_returns_unchanged(self):
-        """Zero padding leaves cuts unchanged."""
-        cuts = [
-            Cut(start=1.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+        segments = merge_adjacent_tokens(tokens)
+
+        assert len(segments) == 1
+        assert segments[0].original_start == 0.0
+        assert segments[0].original_end == 0.5
+
+    def test_adjacent_tokens_merged(self):
+        """Tokens with small gap in source are merged."""
+        tokens = [
+            TimelineToken(
+                text="hello",
+                original_start=0.0,
+                original_end=0.5,
+                timeline_start=0.0,
+                timeline_end=0.5,
+            ),
+            TimelineToken(
+                text="world",
+                original_start=0.52,  # 0.02s gap - should be merged
+                original_end=1.0,
+                timeline_start=0.5,
+                timeline_end=0.98,
+            ),
         ]
-        padded, stats = apply_cut_padding(cuts, padding=0.0, total_duration=5.0)
-        assert padded == cuts
-        assert stats.padded_count == 0
 
-    def test_short_cut_remains_unchanged_with_large_padding(self):
-        """A cut too short for padding is left unchanged (not dropped)."""
-        cuts = [
-            Cut(start=1.0, end=1.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
+        segments = merge_adjacent_tokens(tokens, max_gap=0.05)
+
+        assert len(segments) == 1
+        assert segments[0].original_start == 0.0
+        assert segments[0].original_end == 1.0
+
+    def test_distant_tokens_separate(self):
+        """Tokens with large gap in source stay separate."""
+        tokens = [
+            TimelineToken(
+                text="hello",
+                original_start=0.0,
+                original_end=0.5,
+                timeline_start=0.0,
+                timeline_end=0.5,
+            ),
+            TimelineToken(
+                text="world",
+                original_start=1.0,  # 0.5s gap - should NOT be merged
+                original_end=1.5,
+                timeline_start=0.5,
+                timeline_end=1.0,
+            ),
         ]
-        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=5.0)
-        assert len(padded) == 1
-        assert padded[0].start == 1.0  # Unchanged
-        assert padded[0].end == 1.3  # Unchanged
-        assert stats.padded_count == 0
-        assert stats.unchanged_count == 1
 
-    def test_edge_silence_not_padded(self):
-        """Padding is not applied to leading/trailing silences."""
-        cuts = [
-            Cut(start=0.0, end=2.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BEFORE_SPEECH),
-        ]
-        padded, stats = apply_cut_padding(cuts, padding=0.5, total_duration=5.0)
-        assert len(padded) == 1
-        assert padded[0].start == 0.0
-        assert padded[0].end == 2.0
-        # Edge silences don't count in stats
-        assert stats.padded_count == 0
-        assert stats.unchanged_count == 0
+        segments = merge_adjacent_tokens(tokens, max_gap=0.05)
 
-    def test_mixed_cuts_selective_padding(self):
-        """Only cuts long enough are padded; others are unchanged."""
-        cuts = [
-            # Long enough: 2.0s > 2*0.2 + 0.05 = 0.45s
-            Cut(start=0.0, end=2.0, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
-            # Too short: 0.3s < 0.45s
-            Cut(start=3.0, end=3.3, cut_type=CutType.FILLER, reason=CutReason.FILLER_WORD),
-            # Edge silence: not padded
-            Cut(start=5.0, end=7.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_AFTER_SPEECH),
-        ]
-        padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=10.0)
-
-        assert len(padded) == 3
-        # First cut: padded
-        assert padded[0].start == 0.2
-        assert padded[0].end == 1.8
-        # Second cut: unchanged
-        assert padded[1].start == 3.0
-        assert padded[1].end == 3.3
-        # Third cut: unchanged (edge silence)
-        assert padded[2].start == 5.0
-        assert padded[2].end == 7.0
-
-        assert stats.padded_count == 1
-        assert stats.unchanged_count == 1
-        assert stats.duration_regained == 0.4
+        assert len(segments) == 2
 
 
-class TestRunPipelineValidation:
-    """Tests for run_pipeline input validation."""
+class TestRunPipeline:
+    """Tests for run_pipeline function."""
 
-    def test_invalid_word_segment_raises_validation_error(self, tmp_path):
-        """Malformed word segment (missing 'start') raises ValidationError with clear message."""
-        import json
-
-        from derush.cutter import run_pipeline
-        from derush.exceptions import ValidationError
-
-        bad_json = tmp_path / "bad.json"
-        bad_json.write_text(
+    def test_basic_pipeline(self, tmp_path):
+        """Basic pipeline produces expected results."""
+        whisperx_path = tmp_path / "test.json"
+        whisperx_path.write_text(
             json.dumps(
                 {
                     "word_segments": [
-                        {"word": "hello", "end": 1.0},
+                        {"word": "hello", "start": 0.0, "end": 0.5, "score": 0.9},
+                        {"word": "world", "start": 0.6, "end": 1.0, "score": 0.9},
                     ],
-                    "language": "fr",
+                }
+            )
+        )
+
+        result = run_pipeline(
+            whisperx_path=whisperx_path,
+            total_duration=2.0,
+            language="en",
+        )
+
+        assert result.total_words == 2
+        assert result.kept_words == 2
+        assert result.filler_words == 0
+        assert len(result.keep_segments) >= 1
+
+    def test_filler_removed(self, tmp_path):
+        """Filler words are removed from keep segments."""
+        whisperx_path = tmp_path / "test.json"
+        whisperx_path.write_text(
+            json.dumps(
+                {
+                    "word_segments": [
+                        {"word": "hello", "start": 0.0, "end": 0.5, "score": 0.9},
+                        {"word": "um", "start": 0.5, "end": 0.7, "score": 0.8},
+                        {"word": "world", "start": 0.7, "end": 1.0, "score": 0.9},
+                    ],
+                }
+            )
+        )
+
+        result = run_pipeline(
+            whisperx_path=whisperx_path,
+            total_duration=2.0,
+            language="en",
+        )
+
+        assert result.total_words == 3
+        assert result.kept_words == 2
+        assert result.filler_words == 1
+
+    def test_invalid_word_segment_raises_validation_error(self, tmp_path):
+        """Malformed word segment raises ValidationError."""
+        from derush.exceptions import ValidationError
+
+        whisperx_path = tmp_path / "bad.json"
+        whisperx_path.write_text(
+            json.dumps(
+                {
+                    "word_segments": [
+                        {"word": "hello", "end": 1.0},  # Missing 'start'
+                    ],
                 }
             )
         )
 
         with pytest.raises(ValidationError, match="Invalid WhisperX format"):
             run_pipeline(
-                whisperx_path=bad_json,
+                whisperx_path=whisperx_path,
                 total_duration=10.0,
                 language="fr",
             )
 
     def test_word_segments_built_from_segments_when_missing(self, tmp_path):
         """When word_segments is missing, it is built from segments[].words."""
-        import json
-
-        from derush.cutter import run_pipeline
-
-        json_path = tmp_path / "from_segments.json"
-        json_path.write_text(
+        whisperx_path = tmp_path / "from_segments.json"
+        whisperx_path.write_text(
             json.dumps(
                 {
                     "segments": [
@@ -458,15 +425,45 @@ class TestRunPipelineValidation:
                             ],
                         },
                     ],
-                    "language": "fr",
                 }
             )
         )
 
         result = run_pipeline(
-            whisperx_path=json_path,
+            whisperx_path=whisperx_path,
             total_duration=2.0,
-            language="fr",
+            language="en",
         )
+
         assert result.total_words == 1
         assert result.words[0].word == "hi"
+
+    def test_debug_output(self, tmp_path):
+        """Debug output creates expected files."""
+        whisperx_path = tmp_path / "test.json"
+        whisperx_path.write_text(
+            json.dumps(
+                {
+                    "word_segments": [
+                        {"word": "hello", "start": 0.0, "end": 0.5, "score": 0.9},
+                    ],
+                }
+            )
+        )
+
+        debug_base = tmp_path / "debug"
+
+        run_pipeline(
+            whisperx_path=whisperx_path,
+            total_duration=2.0,
+            language="en",
+            debug_output=debug_base,
+        )
+
+        # Check debug files exist
+        assert (tmp_path / "debug.1_loaded.json").exists()
+        assert (tmp_path / "debug.2_corrected.json").exists()
+        assert (tmp_path / "debug.3_classified.json").exists()
+        assert (tmp_path / "debug.4_filtered.json").exists()
+        assert (tmp_path / "debug.5_timeline.json").exists()
+        assert (tmp_path / "debug.6_segments.json").exists()

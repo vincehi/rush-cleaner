@@ -166,6 +166,73 @@ def merge_adjacent_cuts(cuts: list[Cut]) -> list[Cut]:
 
 
 @dataclass
+class TimelineToken:
+    """Token in the final timeline (after cutting).
+
+    Represents a word that is kept, with both its original position
+    in the source media and its position in the final continuous timeline.
+    """
+
+    text: str
+    original_start: float  # Position in source (seconds)
+    original_end: float  # End in source (seconds)
+    timeline_start: float  # Position in final timeline (seconds)
+    timeline_end: float  # End in final timeline (seconds)
+    corrected: bool = False  # Was timing corrected?
+
+    @property
+    def duration(self) -> float:
+        """Duration of the token in seconds."""
+        return self.original_end - self.original_start
+
+
+@dataclass
+class TimelineSegment:
+    """Segment in the final timeline (merged adjacent tokens).
+
+    Used for FCPXML export: adjacent tokens from the source are merged
+    into segments to avoid excessive number of clips.
+    """
+
+    start_token: TimelineToken  # First token in segment
+    end_token: TimelineToken  # Last token in segment
+
+    @property
+    def text(self) -> str:
+        """Full text of the segment."""
+        # For now, just return the text of first/last tokens
+        # A more complete implementation would store all tokens
+        if self.start_token == self.end_token:
+            return self.start_token.text
+        return f"{self.start_token.text}...{self.end_token.text}"
+
+    @property
+    def original_start(self) -> float:
+        """Start position in source."""
+        return self.start_token.original_start
+
+    @property
+    def original_end(self) -> float:
+        """End position in source."""
+        return self.end_token.original_end
+
+    @property
+    def timeline_start(self) -> float:
+        """Start position in final timeline."""
+        return self.start_token.timeline_start
+
+    @property
+    def timeline_end(self) -> float:
+        """End position in final timeline."""
+        return self.end_token.timeline_end
+
+    @property
+    def duration(self) -> float:
+        """Duration of the segment in seconds."""
+        return self.original_end - self.original_start
+
+
+@dataclass
 class MediaInfo:
     """Video/Audio file metadata."""
 

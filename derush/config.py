@@ -24,6 +24,32 @@ class CutterConfig:
     # E.g. 0.1 = keep 0.1s before and 0.1s after each cut boundary.
     cut_padding: float = 0.0
 
+    # Minimum duration for a keep segment (seconds)
+    # Segments shorter than this are merged with adjacent cuts to avoid micro-clips
+    # that look jarring in the final video. Default 0.5s = ~15 frames at 30fps.
+    min_keep_segment: float = 0.5
+
+
+# =============================================================================
+# Timing estimation constants (V2 pipeline)
+# =============================================================================
+
+# Duration estimation based on word length (in seconds)
+# Used to correct abnormally long words from WhisperX
+TIMING_SHORT_WORD_MAX = 0.15  # Words with 1-2 letters: "le", "de", "je"
+TIMING_3LETTER_MAX = 0.20  # 3 letters: "pas", "cas"
+TIMING_5LETTER_MAX = 0.35  # 4-5 letters: "voiture"
+TIMING_8LETTER_MAX = 0.55  # 6-8 letters: "maintenant"
+TIMING_CHAR_SECONDS = 0.08  # Seconds per character for longer words
+TIMING_MAX_DURATION = 1.5  # Maximum duration cap for any word
+
+# Gap tolerance for merging adjacent tokens in timeline (seconds)
+TIMING_MAX_GAP_MERGE = 0.05  # Tokens with gap < this are merged into one segment
+
+
+# =============================================================================
+# Filler words
+# =============================================================================
 
 # Default filler words by language
 # Only include true hesitation sounds/words that should always be cut

@@ -58,26 +58,52 @@ def sample_cuts():
 
 @pytest.fixture
 def sample_cutter_result(sample_cuts):
-    """Create sample cutter result for testing."""
+    """Create sample cutter result for testing.
+
+    Words are spread across the timeline to match keep_segments structure:
+    - [0.0-1.0]: "Hello", "world" (consecutive KEPT words)
+    - [1.0-2.0]: gap (silence)
+    - [2.0-3.2]: cut (silence)
+    - [3.2-3.5]: "content" (isolated KEPT word)
+    - [3.5-4.0]: gap (silence)
+    - [4.0-4.5]: "here" (isolated KEPT word)
+    - [4.5-6.0]: gap (silence)
+    - [5.0-6.0]: cut (silence)
+    - [6.0-15.0]: gap (silence)
+    - [15.0-15.3]: "euh" (FILLER)
+    - [15.3-60.0]: gap (silence after filler)
+    """
     words = [
+        # Group 1: [0.0-1.0] - "Hello" and "world" are consecutive
         Word(word="Hello", start=0.0, end=0.5, score=0.9, status=WordStatus.KEPT),
         Word(word="world", start=0.6, end=1.0, score=0.9, status=WordStatus.KEPT),
+        # Gap [1.0-2.0] - silence between groups
+        # Group 2: [3.2-3.5] - isolated word "content"
+        Word(word="content", start=3.2, end=3.5, score=0.9, status=WordStatus.KEPT),
+        # Gap [3.5-4.0] - silence between groups
+        # Group 3: [4.0-4.5] - isolated word "here"
+        Word(word="here", start=4.0, end=4.5, score=0.9, status=WordStatus.KEPT),
+        # Gap [4.5-6.0] - silence between groups
+        # Filler: [15.0-15.3] - creates a break
         Word(word="euh", start=15.0, end=15.3, score=0.8, status=WordStatus.FILLER),
+        # Group 4: [20.0-25.0] - words after filler
+        Word(word="final", start=20.0, end=20.5, score=0.9, status=WordStatus.KEPT),
+        Word(word="words", start=20.6, end=21.0, score=0.9, status=WordStatus.KEPT),
     ]
 
     keep_segments = [
-        KeepSegment(start=0.0, end=2.0),
-        KeepSegment(start=3.2, end=5.0),
-        KeepSegment(start=6.0, end=15.0),
-        KeepSegment(start=15.3, end=60.0),
+        KeepSegment(start=0.0, end=2.0),  # "Hello" + "world" + gap
+        KeepSegment(start=3.2, end=5.0),  # "content" + gaps
+        KeepSegment(start=6.0, end=15.0),  # "here" + gap + silence + filler
+        KeepSegment(start=15.3, end=60.0),  # Empty after filler
     ]
 
     return CutterResult(
         words=words,
         cuts=sample_cuts,
         keep_segments=keep_segments,
-        total_words=3,
-        kept_words=2,
+        total_words=7,
+        kept_words=6,
         filler_words=1,
         corrected_words=0,
         original_duration=60.0,
