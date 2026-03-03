@@ -21,9 +21,11 @@ DEFAULT_AUDIO_RATE = 48000
 class FCPXMLExporter(BaseExporter):
     """Exporter for FCPXML 1.9 format compatible with DaVinci Resolve.
 
+    V2 approach: Uses keep_segments directly without filler adjustment.
+    Segments are already computed to exclude fillers.
+
     Stereo audio: use one asset per file with audioSources="2" and audioChannels="1"
-    (two mono sources = L/R). One asset-clip per segment in the spine. See AGENTS.md
-    section "Export FCPXML" for full rationale and Resolve workarounds.
+    (two mono sources = L/R). One asset-clip per segment in the spine.
     """
 
     def export(
@@ -33,7 +35,7 @@ class FCPXMLExporter(BaseExporter):
         output_path: Path,
     ) -> None:
         """
-        Export segments to keep to FCPXML 1.9 format.
+        Export keep_segments to FCPXML 1.9 format.
 
         Args:
             result: CutterResult with keep_segments
@@ -61,14 +63,11 @@ class FCPXMLExporter(BaseExporter):
             height=str(media_info.height),
         )
 
-        # Single asset for the source file — use media-rep child (DaVinci/Resolve style).
-        # audioSources + audioChannels="1": Resolve maps each source to L/R (stereo) or single (mono).
+        # Single asset for the source file
         audio_sources = 2
         if media_info.audio_channels is not None and media_info.audio_channels > 0:
             audio_sources = media_info.audio_channels
         audio_rate = media_info.audio_sample_rate or DEFAULT_AUDIO_RATE
-        # Use video stream nb_frames when available so asset duration never exceeds real frame count
-        # (format duration can be longer than stream → "media offline" at end of timeline).
         file_url = Path(media_info.file_path).as_uri()
         total_asset_frames = (
             media_info.nb_frames
@@ -97,18 +96,26 @@ class FCPXMLExporter(BaseExporter):
         event = etree.SubElement(library, "event", name=DEFAULT_EVENT_NAME)
         project = etree.SubElement(event, "project", name=DEFAULT_PROJECT_NAME)
 
-        # Spine: one asset-clip per segment (same ref r2) — avoids mono / one-sided audio.
         spine = etree.Element("spine")
         timeline_frame = 0
+
         for i, segment in enumerate(keep_segments, 1):
-            start_frame = self._seconds_to_frames(segment.start, fps_num, fps_den)
-            duration_frames = self._seconds_to_frames(segment.duration, fps_num, fps_den)
-            # Clamp so no clip extends past asset end (avoids "media offline" for any segment)
+            # V2: Use segment boundaries directly (already exclude fillers)
+            clip_start = segment.start
+            clip_end = segment.end
+
+            # Convert to frames
+            start_frame = self._seconds_to_frames(clip_start, fps_num, fps_den, mode="round")
+            end_frame = self._seconds_to_frames(clip_end, fps_num, fps_den, mode="round")
+            duration_frames = end_frame - start_frame
+
+            # Skip invalid clips
             if start_frame >= total_asset_frames:
                 continue
             duration_frames = min(duration_frames, total_asset_frames - start_frame)
             if duration_frames <= 0:
                 continue
+
             offset_rational = self._frames_to_rational(timeline_frame, fps_num, fps_den)
             duration_rational = self._frames_to_rational(duration_frames, fps_num, fps_den)
             start_rational = self._frames_to_rational(start_frame, fps_num, fps_den)
@@ -135,7 +142,6 @@ class FCPXMLExporter(BaseExporter):
 
             timeline_frame += duration_frames
 
-        # Spine can be empty if all segments were past asset end (e.g. nb_frames too small)
         if keep_segments and timeline_frame == 0:
             logger.warning(
                 "FCPXML: no clips written (all segments past asset end or zero duration)"
@@ -167,9 +173,18 @@ class FCPXMLExporter(BaseExporter):
         except OSError as e:
             raise ExportError(f"Failed to write FCPXML file: {e}") from e
 
-    def _seconds_to_frames(self, seconds: float, fps_num: int, fps_den: int) -> int:
-        """Convert seconds to number of frames (rounded)."""
-        return round(seconds * fps_num / fps_den)
+    def _seconds_to_frames(
+        self, seconds: float, fps_num: int, fps_den: int, mode: str = "round"
+    ) -> int:
+        """Convert seconds to number of frames with mode selection."""
+        import math
+
+        raw = seconds * fps_num / fps_den
+        if mode == "floor":
+            return int(raw)
+        elif mode == "ceil":
+            return math.ceil(raw)
+        return round(raw)
 
     def _frames_to_rational(self, frames: int, fps_num: int, fps_den: int) -> str:
         """Convert frame count to rational time (num/den)s format."""

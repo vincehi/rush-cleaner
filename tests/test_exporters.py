@@ -63,7 +63,7 @@ class TestFCPXMLExporter:
         assert asset_el is not None
 
     def test_export_creates_keep_segments(self, tmp_path, sample_cutter_result, sample_media_info):
-        """Test that FCPXML exports keep segments."""
+        """Test that FCPXML exports clips from KEPT word groups."""
         output_path = tmp_path / "output.fcpxml"
 
         exporter = FCPXMLExporter()
@@ -72,11 +72,16 @@ class TestFCPXMLExporter:
         tree = etree.parse(output_path)
         root = tree.getroot()
 
-        # Find all asset-clips in spine (one per keep segment)
+        # Find all asset-clips in spine
+        # Token-based approach: clips are generated from consecutive KEPT word groups
+        # Words: "Hello"(0.0-0.5) + "world"(0.6-1.0) → Group 1: [0.0-1.0]
+        # Word: "content"(3.2-3.5) → Group 2: [3.2-3.5]
+        # Word: "here"(4.0-4.5) → Group 3: [4.0-4.5]
+        # Word: "final"(20.0-20.5) + "words"(20.6-21.0) → Group 4: [20.0-21.0]
+        # Total: 4 clips (FILLER "euh" at 15.0-15.3 is skipped)
         asset_clips = root.xpath("//asset-clip")
 
-        # One clip per keep segment (single asset = proper stereo in Resolve/FCP)
-        assert len(asset_clips) == len(sample_cutter_result.keep_segments)
+        assert len(asset_clips) == 4, f"Expected 4 clips from word groups, got {len(asset_clips)}"
 
         # Check that first clip is "Keep 1" and all refs point to r2
         assert asset_clips[0].get("name") == "Keep 1"
@@ -233,7 +238,7 @@ class TestFCPXMLExporter:
             )
 
     def test_export_clamps_and_skips_segments_past_asset_end(self, tmp_path):
-        """When nb_frames limits the asset, segments past the end are clamped or skipped."""
+        """When nb_frames limits the asset, clips past the end are skipped."""
         media_info = MediaInfo(
             fps=25.0,
             fps_rational="25/1",
@@ -242,20 +247,24 @@ class TestFCPXMLExporter:
             height=1080,
             has_video=True,
             file_path="/path/to/video.mp4",
-            nb_frames=75,
+            nb_frames=75,  # 75 frames = 3 seconds
         )
-        # 75 frames at 25fps = 3s. Segment [0, 2] fits; segment [10, 12] starts past the end -> skipped
-        from derush.models import CutterResult, KeepSegment
+        # With token-based approach, clips are generated from words
+        # Words at [0.0-1.0] fit, words at [10.0-12.0] are past the asset end
+        from derush.models import Word, WordStatus, CutterResult, KeepSegment
 
         result = CutterResult(
-            words=[],
+            words=[
+                Word(word="hello", start=0.0, end=1.0, score=0.9, status=WordStatus.KEPT),
+                Word(word="world", start=10.0, end=12.0, score=0.9, status=WordStatus.KEPT),
+            ],
             cuts=[],
             keep_segments=[
                 KeepSegment(start=0.0, end=2.0),
                 KeepSegment(start=10.0, end=12.0),
             ],
-            total_words=0,
-            kept_words=0,
+            total_words=2,
+            kept_words=2,
             filler_words=0,
             corrected_words=0,
             original_duration=60.0,
@@ -268,7 +277,7 @@ class TestFCPXMLExporter:
 
         tree = etree.parse(output_path)
         clips = tree.xpath("//spine/asset-clip")
-        # Only the first segment fits; the second is entirely past 75 frames (3s)
+        # Only the first word group [0.0-1.0] fits; the second [10.0-12.0] is past 75 frames (3s)
         assert len(clips) == 1
         assert clips[0].get("name") == "Keep 1"
 
@@ -290,7 +299,8 @@ class TestFCPXMLExporter:
         tree = etree.parse(output_path)
         format_el = tree.xpath("//format")[0]
         assert format_el.get("frameDuration") == "1/25s"
-        assert len(tree.xpath("//spine/asset-clip")) == len(sample_cutter_result.keep_segments)
+        # Token-based approach: 4 word groups from sample_cutter_result
+        assert len(tree.xpath("//spine/asset-clip")) == 4
 
 
 class TestJSONExporter:

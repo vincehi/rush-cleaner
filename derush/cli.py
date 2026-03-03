@@ -63,7 +63,8 @@ def main(
         help="Seconds to keep at each side of cuts for smoother transitions (0-1s; cuts too short are left unchanged)",
     ),
     fillers: str | None = typer.Option(
-        None, "--fillers", help="Custom filler words (comma-separated)"
+        None, "--fillers",
+        help="Additional filler words to remove (comma-separated, e.g. 'voila,donc,alors'"
     ),
     fps: float | None = typer.Option(
         None, "--fps", help="Override FPS (auto-detected from video by default)"
@@ -86,6 +87,9 @@ def main(
     ),
     keep_whisperx: bool = typer.Option(
         False, "--keep-whisperx", help="Keep WhisperX JSON file after processing"
+    ),
+    debug: bool = typer.Option(
+        False, "--debug", help="Export debug JSON files for each pipeline stage"
     ),
     version: bool = typer.Option(
         False,
@@ -223,12 +227,18 @@ def main(
     typer.echo("\n[3/5] Correcting timestamps...")
     typer.echo(f"\n[4/5] Detecting cuts (language: {detected_language})...")
 
+    # Debug output path (same base as output, with different suffixes)
+    debug_output_path = None
+    if debug:
+        debug_output_path = output_dir / input_file.stem
+
     result = run_pipeline(
         whisperx_path=whisperx_output,
         total_duration=media_info.duration,
         language=detected_language,
         custom_fillers=custom_fillers,
         config=config,
+        debug_output=debug_output_path,
     )
 
     # Verbose output
@@ -260,6 +270,16 @@ def main(
     typer.echo(f"  Original duration: {result.original_duration:.1f}s")
     typer.echo(f"  Final duration: {result.final_duration:.1f}s")
     typer.echo(f"  Cut duration: {result.cut_duration:.1f}s ({result.cut_percentage:.1f}%)")
+
+    # Debug files info
+    if debug and debug_output_path:
+        typer.echo(f"\n  Debug files exported to: {debug_output_path.parent}")
+        typer.echo("    - *_1_loaded.json")
+        typer.echo("    - *_2_corrected.json")
+        typer.echo("    - *_3_classified.json")
+        typer.echo("    - *_4_filtered.json")
+        typer.echo("    - *_5_timeline.json")
+        typer.echo("    - *_6_segments.json")
 
     # Padding stats (if applicable)
     if result.padding_stats and cut_padding > 0:
