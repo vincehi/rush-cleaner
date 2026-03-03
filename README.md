@@ -45,6 +45,9 @@ derush video.mp4 --min-silence 0.3
 # Preview without generating file
 derush video.mp4 --preview
 
+# Keep WhisperX JSON for debugging
+derush video.mp4 --keep-whisperx
+
 # Add custom filler words
 derush video.mp4 --fillers "like,you know"
 ```
@@ -61,6 +64,7 @@ derush video.mp4 --fillers "like,you know"
 | `--cut-padding` | Padding around cuts (seconds) | `0` |
 | `--fillers` | Custom filler words | built-in list |
 | `--preview` | Show summary, no file | - |
+| `--keep-whisperx` | Keep WhisperX JSON file | deleted |
 | `--verbose`, `-v` | Show detailed cuts | - |
 | `--model`, `-m` | Whisper model size | `base` |
 | `--device` | `cpu` or `cuda` | `cpu` |
