@@ -79,6 +79,7 @@ def sample_cutter_result(sample_cuts):
         total_words=3,
         kept_words=2,
         filler_words=1,
+        corrected_words=0,
         original_duration=60.0,
         final_duration=57.5,
         cut_duration=2.5,

@@ -145,7 +145,7 @@ class TestTranscribe:
         mock_whisperx.align.return_value = {"segments": []}
 
         with patch.dict("sys.modules", {"whisperx": mock_whisperx}):
-            result = transcribe(test_file, language=None)
+            _result = transcribe(test_file, language=None)
 
         # load_model and transcribe both receive language=None so WhisperX does per-file detection
         mock_whisperx.load_model.assert_called_once()

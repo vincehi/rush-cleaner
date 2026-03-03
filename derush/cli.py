@@ -84,6 +84,9 @@ def main(
     preview: bool = typer.Option(
         False, "--preview", help="Show summary without generating files (dry-run)"
     ),
+    keep_whisperx: bool = typer.Option(
+        False, "--keep-whisperx", help="Keep WhisperX JSON file after processing"
+    ),
     version: bool = typer.Option(
         False,
         "--version",
@@ -144,13 +147,14 @@ def main(
         logger.error(error_msg)
         raise typer.Exit(1)
 
-    # Get media info
-    typer.echo(f"Analyzing media file: {input_file}")
+    # [1/5] Get media info
+    typer.echo("[1/5] Analyzing media file...")
     fallback_fps = fps if fps else 25.0
     try:
         media_info = get_media_info(input_file, fallback_fps=fallback_fps)
     except MediaInfoError as e:
-        typer.echo(f"Media info extraction failed: {e}", err=True)
+        typer.echo("  ✗ Media info extraction failed", err=True)
+        typer.echo(f"    {e}", err=True)
         logger.error(f"Media info extraction failed: {e}")
         raise typer.Exit(1) from e
 
@@ -159,15 +163,15 @@ def main(
         media_info.fps = fps
         media_info.fps_rational = f"{int(fps)}/1"
 
-    typer.echo(f"  FPS: {media_info.fps} ({media_info.fps_rational})")
-    typer.echo(f"  Duration: {media_info.duration:.1f}s")
+    typer.echo(f"    FPS: {media_info.fps} ({media_info.fps_rational})")
+    typer.echo(f"    Duration: {media_info.duration:.1f}s")
     if media_info.has_video:
-        typer.echo(f"  Resolution: {media_info.width}x{media_info.height}")
+        typer.echo(f"    Resolution: {media_info.width}x{media_info.height}")
 
     logger.debug(f"Media info extracted: {media_info}")
 
-    # Transcribe
-    typer.echo("\nTranscribing audio...")
+    # [2/5] Transcribe
+    typer.echo("\n[2/5] Transcribing audio (may take several minutes)...")
     custom_fillers = [f.strip() for f in fillers.split(",")] if fillers else None
 
     # Output directory: next to input file when output not specified
@@ -185,16 +189,16 @@ def main(
             vad_method=vad,
         )
     except (RuntimeError, TranscriptionError) as e:
-        typer.echo(f"Transcription failed: {e}", err=True)
+        typer.echo("  ✗ Transcription failed", err=True)
+        typer.echo(f"    {e}", err=True)
         logger.error(f"Transcription failed: {e}")
         raise typer.Exit(1) from e
     except DerushError as e:
-        typer.echo(f"Error: {e}", err=True)
+        typer.echo(f"  ✗ Error: {e}", err=True)
         logger.error(f"Error: {e}")
         raise typer.Exit(1) from e
 
-    typer.echo(f"  Found {len(segments)} segments")
-    typer.echo(f"  WhisperX output saved to: {whisperx_output}")
+    typer.echo(f"    Found {len(segments)} segments")
 
     # Build configuration
     config = CutterConfig(
@@ -215,8 +219,9 @@ def main(
             whisperx_data = json.load(f)
         detected_language = whisperx_data.get("language", "en")
 
-    # Run cutting pipeline
-    typer.echo(f"\nRunning cutting pipeline (language: {detected_language})...")
+    # [3/5] Run cutting pipeline
+    typer.echo("\n[3/5] Correcting timestamps...")
+    typer.echo(f"\n[4/5] Detecting cuts (language: {detected_language})...")
 
     result = run_pipeline(
         whisperx_path=whisperx_output,
@@ -249,6 +254,8 @@ def main(
     typer.echo(
         f"  Words: {result.total_words} total ({result.kept_words} kept, {result.filler_words} fillers)"
     )
+    if result.corrected_words > 0:
+        typer.echo(f"  Timestamps corrected: {result.corrected_words} words with abnormal duration")
     typer.echo(f"  Cuts: {len(result.cuts)} sections")
     typer.echo(f"  Original duration: {result.original_duration:.1f}s")
     typer.echo(f"  Final duration: {result.final_duration:.1f}s")
@@ -274,8 +281,8 @@ def main(
         extension = {"fcpxml": ".fcpxml", "json": ".json"}[output_format]
         output = output_dir / f"{input_file.stem}{extension}"
 
-    # Export
-    typer.echo(f"\nExporting to {output_format.upper()}...")
+    # [5/5] Export
+    typer.echo(f"\n[5/5] Exporting to {output_format.upper()}...")
     exporters = {
         "fcpxml": get_fcpxml_exporter(),
         "json": JSONExporter(),
@@ -285,11 +292,17 @@ def main(
     try:
         exporter.export(result=result, media_info=media_info, output_path=output)
     except ExportError as e:
-        typer.echo(f"Export failed: {e}", err=True)
+        typer.echo("  ✗ Export failed", err=True)
+        typer.echo(f"    {e}", err=True)
         logger.error(f"Export failed: {e}")
         raise typer.Exit(1) from e
 
-    typer.echo(f"\nOutput saved to: {output}")
+    typer.echo(f"  ✓ Output saved to: {output}")
+
+    # Cleanup WhisperX file unless user wants to keep it
+    if not keep_whisperx and whisperx_output.exists():
+        whisperx_output.unlink()
+        logger.debug(f"Cleaned up: {whisperx_output}")
 
 
 def app() -> None:

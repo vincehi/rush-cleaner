@@ -107,6 +107,7 @@ class CutterResult:
     total_words: int
     kept_words: int
     filler_words: int
+    corrected_words: int  # Words with timestamp corrections
     original_duration: float
     final_duration: float
     cut_duration: float
@@ -175,9 +176,7 @@ class MediaInfo:
     height: int  # Video height in pixels
     has_video: bool  # True for video files, False for audio-only
     file_path: str  # Absolute path to the source file
-    nb_frames: int | None = (
-        None  # Video stream frame count when available (avoids media offline)
-    )
+    nb_frames: int | None = None  # Video stream frame count when available (avoids media offline)
     audio_sample_rate: int | None = None  # From ffprobe when available (e.g. 48000, 44100)
     audio_channels: int | None = None  # From ffprobe when available (1=mono, 2=stereo)
 

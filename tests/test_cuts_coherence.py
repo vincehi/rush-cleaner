@@ -7,7 +7,6 @@ These tests verify that:
 4. Fillers are included in cuts
 """
 
-
 from derush.config import CutterConfig
 from derush.cutter import compute_cuts, merge_adjacent_cuts
 from derush.models import Cut, CutReason, CutType, Word, WordStatus

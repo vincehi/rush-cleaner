@@ -1,7 +1,6 @@
 """Smoke tests to verify module imports work correctly."""
 
 
-
 class TestModuleImports:
     """Tests to verify all modules can be imported without errors."""
 

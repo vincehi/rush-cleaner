@@ -90,7 +90,7 @@ class TestCLI:
             patch("derush.cli.get_media_info", return_value=sample_media_info),
             patch.dict("sys.modules", {"whisperx": mock_whisperx}),
         ):
-            result = runner.invoke(_cli_app, [str(test_file), "--output", str(output_file)])
+            _result = runner.invoke(_cli_app, [str(test_file), "--output", str(output_file)])
 
         assert output_file.exists()
 
@@ -107,6 +107,23 @@ class TestCLI:
 
         assert result.exit_code == 0
         assert (tmp_path / "my_video.fcpxml").exists()
+        # WhisperX file is cleaned up by default
+        assert not (tmp_path / "my_video_whisperx.json").exists()
+
+    def test_keep_whisperx_preserves_file(self, tmp_path, sample_media_info, mock_whisperx):
+        """Test that --keep-whisperx preserves the WhisperX JSON file."""
+        test_file = tmp_path / "my_video.mp4"
+        test_file.touch()
+
+        with (
+            patch("derush.cli.get_media_info", return_value=sample_media_info),
+            patch.dict("sys.modules", {"whisperx": mock_whisperx}),
+        ):
+            result = runner.invoke(_cli_app, [str(test_file), "--keep-whisperx"])
+
+        assert result.exit_code == 0
+        assert (tmp_path / "my_video.fcpxml").exists()
+        # WhisperX file is preserved with --keep-whisperx
         assert (tmp_path / "my_video_whisperx.json").exists()
 
     def test_fps_override(self, tmp_path, sample_media_info, mock_whisperx):

@@ -119,10 +119,11 @@ class TestAbnormallyLongWords:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
         assert duration < 0.5, f"Word should be corrected to <0.5s, got {duration}s"
+        assert count == 1
 
     def test_30_second_word_is_corrected(self):
         """Even a 30-second word should be corrected."""
@@ -131,10 +132,11 @@ class TestAbnormallyLongWords:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
         assert duration < 1.0
+        assert count == 1
 
     def test_long_word_exposes_hidden_gap(self):
         """Correcting a long word should expose hidden gaps."""
@@ -146,7 +148,7 @@ class TestAbnormallyLongWords:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # After correction, "test" should be much shorter
         test_word = corrected[1]
@@ -156,6 +158,7 @@ class TestAbnormallyLongWords:
         # Gap between corrected "test" and "suite" should be exposed
         gap = corrected[2].start - test_word.end
         assert gap > 5.0, "Hidden gap should be exposed after correction"
+        assert count == 3  # "de", "test", and "suite" all needed correction
 
 
 class TestVeryShortFiles:
@@ -247,7 +250,7 @@ class TestBoundaryConditions:
         cuts = compute_cuts(words, config, total_duration=2.0)
 
         # No end cut since word ends at 2.0
-        end_cut = next((c for c in cuts if c.end == 2.0), None)
+        _end_cut = next((c for c in cuts if c.end == 2.0), None)
         # There might be a cut at start, but no cut after the word
         # because end_silence = 2.0 - 2.0 = 0
 
@@ -259,12 +262,13 @@ class TestBoundaryConditions:
 
         config = CutterConfig()
         # Should not crash
-        corrected = correct_word_timestamps(words, config)
-        cuts = compute_cuts(words, config, total_duration=2.0)
+        corrected, count = correct_word_timestamps(words, config)
+        _cuts = compute_cuts(words, config, total_duration=2.0)
 
         # Word has 0s duration and is not > max_word_duration, so no correction
         # The correction logic only triggers for words that are too long OR have low score
         assert corrected[0].end == corrected[0].start  # 0 duration preserved
+        assert count == 0
 
     def test_overlapping_words(self):
         """Overlapping words should be handled gracefully."""
@@ -293,7 +297,7 @@ class TestUnusualInputs:
 
         config = CutterConfig()
         cuts = compute_cuts(words, config, total_duration=1.0)
-        segments = compute_keep_segments(cuts, total_duration=1.0)
+        _segments = compute_keep_segments(cuts, total_duration=1.0)
 
         # Should have initial silence + filler cut
         assert len(cuts) >= 1
@@ -326,11 +330,12 @@ class TestUnusualInputs:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Words with normal duration should not be corrected, regardless of score
         assert corrected[0].end - corrected[0].start == pytest.approx(0.5, abs=0.01)
         assert corrected[1].end - corrected[1].start == pytest.approx(0.4, abs=0.01)
+        assert count == 0
 
     def test_special_characters_in_words(self):
         """Words with special characters should be handled."""

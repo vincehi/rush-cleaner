@@ -257,6 +257,7 @@ class TestFCPXMLExporter:
             total_words=0,
             kept_words=0,
             filler_words=0,
+            corrected_words=0,
             original_duration=60.0,
             final_duration=4.0,
             cut_duration=56.0,

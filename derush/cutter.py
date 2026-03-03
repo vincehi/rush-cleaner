@@ -55,7 +55,7 @@ def _normalize_word(word: str) -> str:
     return re.sub(r"[^\w\s]", "", word.lower()).strip()
 
 
-def correct_word_timestamps(words: list[Word], config: CutterConfig) -> list[Word]:
+def correct_word_timestamps(words: list[Word], config: CutterConfig) -> tuple[list[Word], int]:
     """
     Correct misaligned word timestamps from WhisperX.
 
@@ -75,12 +75,13 @@ def correct_word_timestamps(words: list[Word], config: CutterConfig) -> list[Wor
         config: Configuration with max_word_duration and min_word_score
 
     Returns:
-        List of words with corrected timestamps
+        Tuple of (corrected words list, count of corrections made)
     """
     if not words:
-        return words
+        return words, 0
 
     corrected_words = []
+    corrected_count = 0
 
     for i, word in enumerate(words):
         duration = word.end - word.start
@@ -126,17 +127,18 @@ def correct_word_timestamps(words: list[Word], config: CutterConfig) -> list[Wor
                 status=word.status,
             )
             corrected_words.append(corrected_word)
+            corrected_count += 1
         else:
             corrected_words.append(word)
 
-    return corrected_words
+    return corrected_words, corrected_count
 
 
 def _build_filler_patterns(fillers: list[str]) -> dict[str, re.Pattern]:
     """Build regex patterns for filler matching with word boundaries."""
     patterns = {}
     for filler in fillers:
-        variants = set([filler])
+        variants = {filler}
 
         for base, vars_list in FILLER_VARIANTS.items():
             if filler == base or filler in vars_list:
@@ -229,7 +231,6 @@ def compute_cuts(words: list[Word], config: CutterConfig, total_duration: float)
         return cuts
 
     # Get kept words only (non-fillers)
-    kept_words = [w for w in words if w.status == WordStatus.KEPT]
     filler_words = [w for w in words if w.status == WordStatus.FILLER]
 
     # 1. Cut silences at the beginning (before first word)
@@ -475,11 +476,14 @@ def run_pipeline(
             )
         except (KeyError, TypeError, ValueError) as e:
             raise ValidationError(
-                f"Invalid word segment at index {i} in {whisperx_path}: each entry must have 'start' and 'end' (numbers). {e}"
+                f"Invalid WhisperX format in {whisperx_path}:\n"
+                f"  - Word at index {i} missing 'start' or 'end'\n"
+                f"  - Verify that WhisperX ran correctly\n"
+                f"  Detail: {e}"
             ) from e
 
     # Step 0: Correct misaligned timestamps from WhisperX
-    words = correct_word_timestamps(words, config)
+    words, corrected_count = correct_word_timestamps(words, config)
 
     # Step 1: Classify words
     words = classify_words(words, language, custom_fillers)
@@ -508,6 +512,7 @@ def run_pipeline(
         total_words=total_words,
         kept_words=kept_words,
         filler_words=filler_words,
+        corrected_words=corrected_count,
         original_duration=total_duration,
         final_duration=final_duration,
         cut_duration=cut_duration,

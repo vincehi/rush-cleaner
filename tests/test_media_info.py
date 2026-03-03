@@ -56,34 +56,15 @@ class TestGetMediaInfo:
 
     @patch("derush.media_info.shutil.which")
     def test_ffprobe_not_available(self, mock_which, tmp_path):
-        """Test fallback when ffprobe is not available."""
+        """Test error when ffprobe is not available."""
         mock_which.return_value = None
 
         # Create a dummy file
         test_file = tmp_path / "test.mp4"
         test_file.touch()
 
-        result = get_media_info(test_file, fallback_fps=25.0)
-
-        assert result.fps == 25.0
-        assert result.fps_rational == "25/1"
-        assert result.has_video is False
-        assert result.file_path == str(test_file.absolute())
-
-    @patch("derush.media_info.shutil.which")
-    def test_fallback_fps_rational_ntsc_and_24p(self, mock_which, tmp_path):
-        """Fallback uses correct rational for 29.97 (NTSC) and 23.976 (24p)."""
-        mock_which.return_value = None
-        test_file = tmp_path / "test.mp4"
-        test_file.touch()
-
-        result_2997 = get_media_info(test_file, fallback_fps=29.97)
-        assert result_2997.fps == pytest.approx(29.97, rel=0.01)
-        assert result_2997.fps_rational == "30000/1001"
-
-        result_23976 = get_media_info(test_file, fallback_fps=23.976)
-        assert result_23976.fps == pytest.approx(23.976, rel=0.01)
-        assert result_23976.fps_rational == "24000/1001"
+        with pytest.raises(MediaInfoError, match="ffprobe not found"):
+            get_media_info(test_file, fallback_fps=25.0)
 
     @patch("derush.media_info.shutil.which")
     @patch("derush.media_info.subprocess.run")
@@ -192,7 +173,7 @@ class TestGetMediaInfo:
             returncode=1, cmd=["ffprobe"], stderr="Error: invalid file"
         )
 
-        with pytest.raises(MediaInfoError, match="ffprobe failed"):
+        with pytest.raises(MediaInfoError, match="Could not analyze media file"):
             get_media_info(test_file)
 
 

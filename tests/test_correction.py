@@ -23,11 +23,12 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Should be corrected to a reasonable duration (< 0.5s for 4 letters)
         assert corrected[0].end - corrected[0].start < 0.5
         assert corrected[0].end - corrected[0].start >= 0.05  # Min 50ms
+        assert count == 1
 
     def test_test_word_corrected_to_approx_04s(self):
         """The word 'test' (4 chars) should be corrected to ~0.4s max."""
@@ -37,11 +38,12 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # "test" has 4 chars, max ~0.4s
         duration = corrected[0].end - corrected[0].start
         assert 0.25 < duration < 0.5, f"Expected ~0.4s, got {duration}s"
+        assert count == 1
 
     def test_normal_word_not_corrected(self):
         """Words with normal duration should not be modified."""
@@ -50,11 +52,12 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Should remain unchanged
         assert corrected[0].start == 0.0
         assert corrected[0].end == 0.5
+        assert count == 0
 
     def test_french_filler_euh_corrected(self):
         """French filler 'euh' should be corrected to ~0.3s if too long."""
@@ -63,11 +66,12 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Should be corrected to known average duration for "euh"
         duration = corrected[0].end - corrected[0].start
         assert duration == pytest.approx(0.3, abs=0.05)
+        assert count == 1
 
     def test_filler_hmm_corrected_to_015s(self):
         """The filler 'hmm' should be corrected to ~0.15s if too long."""
@@ -76,10 +80,11 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
         assert duration == pytest.approx(0.15, abs=0.05)
+        assert count == 1
 
     def test_short_word_cas_corrected(self):
         """The word 'cas' (3 letters) should be corrected if too long.
@@ -94,10 +99,11 @@ class TestDurationBasedCorrection:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
         assert duration == pytest.approx(0.3, abs=0.01), f"'cas' duration {duration}s not ~0.3s"
+        assert count == 1
 
 
 class TestCorrectionConstraints:
@@ -111,10 +117,11 @@ class TestCorrectionConstraints:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # First word should not extend past second word's start
         assert corrected[0].end < corrected[1].start
+        assert count == 1
 
     def test_minimum_duration_50ms(self):
         """Corrected words should have at least 50ms duration."""
@@ -123,16 +130,18 @@ class TestCorrectionConstraints:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         duration = corrected[0].end - corrected[0].start
         assert duration >= 0.05, f"Duration {duration}s is below minimum 50ms"
+        assert count == 1
 
     def test_empty_words_list(self):
         """Empty word list should return empty list."""
         config = CutterConfig()
-        corrected = correct_word_timestamps([], config)
+        corrected, count = correct_word_timestamps([], config)
         assert corrected == []
+        assert count == 0
 
     def test_word_status_preserved(self):
         """Word status should be preserved after correction."""
@@ -141,9 +150,10 @@ class TestCorrectionConstraints:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         assert corrected[0].status == WordStatus.FILLER
+        assert count == 1
 
 
 class TestRealWorldSample:
@@ -162,7 +172,7 @@ class TestRealWorldSample:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Find the corrected "test" word
         test_word = next(w for w in corrected if w.word == "test")
@@ -174,6 +184,7 @@ class TestRealWorldSample:
         # Should not overlap with next word
         hmm_word = next(w for w in corrected if w.word == "hmm")
         assert test_word.end <= hmm_word.start
+        assert count == 2  # Both "de" and "test" were corrected
 
     def test_sample_hmm_word_normal_duration(self):
         """Test the 'hmm' word with normal duration (0.06s).
@@ -185,11 +196,12 @@ class TestRealWorldSample:
         ]
 
         config = CutterConfig()
-        corrected = correct_word_timestamps(words, config)
+        corrected, count = correct_word_timestamps(words, config)
 
         # Duration is normal (0.06s), so no correction happens
         duration = corrected[0].end - corrected[0].start
         assert duration == pytest.approx(0.06, abs=0.01)
+        assert count == 0
 
 
 class TestAntiRegression:
@@ -203,10 +215,13 @@ class TestAntiRegression:
             ]
 
             config = CutterConfig()
-            corrected = correct_word_timestamps(words, config)
+            corrected, count = correct_word_timestamps(words, config)
 
             duration = corrected[0].end - corrected[0].start
-            assert duration == pytest.approx(0.3, abs=0.01), f"'cas' with raw end={raw_end} not ~0.3s: {duration}s"
+            assert duration == pytest.approx(0.3, abs=0.01), (
+                f"'cas' with raw end={raw_end} not ~0.3s: {duration}s"
+            )
+            assert count == 1
 
     def test_long_words_always_corrected(self):
         """REGRESSION: Any word exceeding its max duration must be corrected."""
@@ -216,8 +231,9 @@ class TestAntiRegression:
             ]
 
             config = CutterConfig()
-            corrected = correct_word_timestamps(words, config)
+            corrected, count = correct_word_timestamps(words, config)
 
             duration = corrected[0].end - corrected[0].start
             # All words should be corrected to <= 1s
             assert duration <= 1.0, f"'{word_text}' was not corrected: {duration}s"
+            assert count == 1

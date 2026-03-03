@@ -113,6 +113,7 @@ def cutter_result():
         total_words=8,
         kept_words=6,
         filler_words=2,
+        corrected_words=0,
         original_duration=4.0,
         final_duration=3.0,
         cut_duration=1.0,

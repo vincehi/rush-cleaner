@@ -12,7 +12,7 @@ from derush.cutter import (
     compute_keep_segments,
     is_filler,
 )
-from derush.models import Cut, CutReason, CutType, PaddingStats, Word, WordStatus
+from derush.models import Cut, CutReason, CutType, Word, WordStatus
 
 
 class TestNormalizeWord:
@@ -335,7 +335,9 @@ class TestApplyCutPadding:
     def test_padding_shrinks_cuts(self):
         """Padding reduces each cut by the same amount on both sides."""
         cuts = [
-            Cut(start=1.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS),
+            Cut(
+                start=1.0, end=3.0, cut_type=CutType.SILENCE, reason=CutReason.GAP_BETWEEN_SEGMENTS
+            ),
         ]
         padded, stats = apply_cut_padding(cuts, padding=0.2, total_duration=10.0)
         assert len(padded) == 1
@@ -429,7 +431,7 @@ class TestRunPipelineValidation:
             )
         )
 
-        with pytest.raises(ValidationError, match="Invalid word segment.*'start'.*'end'"):
+        with pytest.raises(ValidationError, match="Invalid WhisperX format"):
             run_pipeline(
                 whisperx_path=bad_json,
                 total_duration=10.0,

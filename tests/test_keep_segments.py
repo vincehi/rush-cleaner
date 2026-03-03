@@ -149,7 +149,7 @@ class TestNoGapsBetweenSegments:
 
         # Check for gaps
         current_end = 0.0
-        for start, end, type_ in all_ranges:
+        for start, end, _type in all_ranges:
             if start > current_end + 0.001:
                 pytest.fail(f"Gap detected: [{current_end}, {start}] is not covered")
             current_end = max(current_end, end)
